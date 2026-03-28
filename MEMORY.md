@@ -1,5 +1,33 @@
 # Project Memory
 
+## Task 4: Audio Playback + Playhead
+
+### AudioStreamWAV.load_from_file() for absolute paths
+- `ResourceLoader.load()` fails on absolute external paths (outside `res://`) for `.wav` files — it tries to find an `.import` cache entry first.
+- Use `AudioStreamWAV.load_from_file(path)` directly for loading WAV files from absolute filesystem paths. This is a static method that reads raw bytes.
+- `AudioStreamOggVorbis.load_from_file(path)` works the same way for OGG files.
+
+### Playhead timing with Time.get_ticks_msec()
+- Wall-clock playhead: `_play_start_playhead + (Time.get_ticks_msec() - _play_start_wall) / 1000.0`
+- This correctly tracks real elapsed time independent of frame rate, including during `--write-movie` captures that run at arbitrary speed.
+- `--write-movie` at 10fps may run at 250-500% real speed, so playhead advances only `real_elapsed / movie_elapsed` × expected time.
+
+### AudioPlayer signal connection via has_signal guard
+- `audio_player` is declared as `AudioStreamPlayer` in ChartEditorMain. Its script-defined signals (`playback_started` etc.) are not visible at compile-time from the base type.
+- Must use `audio_player.connect("signal_name", callback)` with `has_signal()` guard — same pattern as Timeline signals.
+
+### toggle_playback() paused resume
+- When `_is_paused = true`, resume by calling `play_from(_pause_position, offset)` NOT `play_from(playhead_time, offset)`.
+- Accessing `audio_player._is_paused` directly from ChartEditorMain works (GDScript allows reading private-convention vars from other scripts).
+
+### Auto-scroll implementation
+- Auto-scroll triggers when playhead exits the leading 80% of the visible timeline width.
+- `target_scroll = time - visible_width * 0.8` keeps playhead at 80% mark.
+- Must sync `HScrollBar.value` (with blocked signals) after updating `timeline.scroll_offset` to keep them in sync.
+
+### _format_time() format string
+- `"%d:%02d.%03d" % [m, s, ms]` — minutes:seconds.milliseconds, e.g. `1:05.042`
+
 ## Task 3: Note Editing + Undo/Redo
 
 ### Signal access on typed Control references

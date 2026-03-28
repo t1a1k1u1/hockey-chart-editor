@@ -145,6 +145,17 @@ func _ready() -> void:
 
 	audio_player = get_node_or_null("AudioStreamPlayer")
 
+	# Connect AudioPlayer signals
+	if audio_player:
+		if audio_player.has_signal("playback_started"):
+			audio_player.connect("playback_started", _on_playback_started)
+		if audio_player.has_signal("playback_stopped"):
+			audio_player.connect("playback_stopped", _on_playback_stopped)
+		if audio_player.has_signal("playback_paused"):
+			audio_player.connect("playback_paused", _on_playback_paused)
+		if audio_player.has_signal("playhead_time_changed"):
+			audio_player.connect("playhead_time_changed", _on_audio_playhead_changed)
+
 	# Build BPM change dialog
 	_build_bpm_change_dialog()
 
@@ -405,21 +416,23 @@ func _on_note_type_pressed(idx: int) -> void:
 	_update_note_type_buttons()
 
 func _on_play_button_pressed() -> void:
-	if audio_player and audio_player.is_playing_audio():
-		audio_player.pause_playback()
-	elif audio_player:
-		audio_player.play_from(playhead_time, chart_data.meta.get("offset", 0.0))
+	toggle_playback()
 
 func _on_stop_button_pressed() -> void:
+	stop_playback()
+
+func stop_playback() -> void:
+	var return_time = playhead_time
 	if audio_player:
+		return_time = audio_player._play_start_playhead
 		audio_player.stop_playback()
-	playhead_time = 0.0
+	playhead_time = return_time
 	playhead_moved.emit(playhead_time)
 	if timeline:
 		timeline.playhead_time = playhead_time
 		timeline.queue_redraw()
 	if time_label:
-		time_label.text = "0:00.000"
+		time_label.text = _format_time(playhead_time)
 
 func _on_hscroll_changed(value: float) -> void:
 	if timeline:
@@ -813,7 +826,10 @@ func _input(event: InputEvent) -> void:
 			delete_selected()
 		get_viewport().set_input_as_handled()
 	elif kc == KEY_ESCAPE:
-		clear_selection()
+		if audio_player and (audio_player.is_playing_audio() or audio_player._is_paused):
+			stop_playback()
+		else:
+			clear_selection()
 		get_viewport().set_input_as_handled()
 	elif ctrl and kc == KEY_B:
 		add_bpm_change_at_playhead()
@@ -895,24 +911,35 @@ func snap_finer() -> void:
 			snap_div_select.selected = idx + 1
 
 func toggle_playback() -> void:
-	if audio_player and audio_player.is_playing_audio():
+	if audio_player == null:
+		return
+	if audio_player.is_playing_audio():
 		audio_player.pause_playback()
-	elif audio_player:
+	elif audio_player._is_paused:
+		# Resume from pause position
+		audio_player.play_from(audio_player._pause_position, chart_data.meta.get("offset", 0.0))
+	else:
 		audio_player.play_from(playhead_time, chart_data.meta.get("offset", 0.0))
 
 func set_playhead_time(t: float) -> void:
-	playhead_time = t
+	playhead_time = max(0.0, t)
 	playhead_moved.emit(playhead_time)
+	if audio_player:
+		audio_player.set_playhead_time(playhead_time)
 	if timeline:
 		timeline.playhead_time = playhead_time
 		timeline.queue_redraw()
 	_update_time_label()
 
+func _format_time(seconds_total: float) -> String:
+	var m = int(seconds_total) / 60
+	var s = int(seconds_total) % 60
+	var ms = int(fmod(seconds_total, 1.0) * 1000.0)
+	return "%d:%02d.%03d" % [m, s, ms]
+
 func _update_time_label() -> void:
 	if time_label:
-		var minutes = int(playhead_time) / 60
-		var seconds = fmod(playhead_time, 60.0)
-		time_label.text = "%d:%06.3f" % [minutes, seconds]
+		time_label.text = _format_time(playhead_time)
 
 func _get_grid_interval() -> float:
 	if chart_data == null:
@@ -1006,10 +1033,49 @@ func _on_metadata_field_changed(field: String, value: Variant) -> void:
 	_mark_dirty()
 
 func _on_playback_started() -> void:
-	pass
+	var ctrl_bar = get_node_or_null("RootVBox/ControlBarPanel/ControlBar")
+	if ctrl_bar:
+		var play_btn = ctrl_bar.get_node_or_null("PlayButton")
+		if play_btn:
+			play_btn.text = "⏸"
 
 func _on_playback_stopped() -> void:
-	pass
+	var ctrl_bar = get_node_or_null("RootVBox/ControlBarPanel/ControlBar")
+	if ctrl_bar:
+		var play_btn = ctrl_bar.get_node_or_null("PlayButton")
+		if play_btn:
+			play_btn.text = "▶"
+
+func _on_playback_paused() -> void:
+	var ctrl_bar = get_node_or_null("RootVBox/ControlBarPanel/ControlBar")
+	if ctrl_bar:
+		var play_btn = ctrl_bar.get_node_or_null("PlayButton")
+		if play_btn:
+			play_btn.text = "▶"
+
+func _on_audio_playhead_changed(time: float) -> void:
+	playhead_time = time
+	if time_label:
+		time_label.text = _format_time(time)
+	if timeline:
+		timeline.playhead_time = time
+		timeline.queue_redraw()
+	# Auto-scroll: keep playhead near the 80% mark of the visible timeline width
+	if timeline and timeline.size.x > 0:
+		var visible_width = timeline.size.x / pixels_per_second
+		var scroll_start = timeline.scroll_offset
+		var scroll_end = scroll_start + visible_width
+		# Only scroll if playhead is outside [scroll_start, scroll_start + visible_width*0.8]
+		if time > scroll_start + visible_width * 0.8 or time < scroll_start:
+			var target_scroll = time - visible_width * 0.8
+			timeline.scroll_offset = max(0.0, target_scroll)
+			# Sync HScrollBar
+			var hscroll = get_node_or_null("RootVBox/MainArea/TimelineArea/HScrollBar")
+			if hscroll:
+				hscroll.set_block_signals(true)
+				hscroll.value = timeline.scroll_offset
+				hscroll.set_block_signals(false)
+			timeline.queue_redraw()
 
 func _update_property_panel() -> void:
 	if property_panel == null:
