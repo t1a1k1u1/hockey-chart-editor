@@ -1,5 +1,25 @@
 # Project Memory
 
+## Task 7: Timeline Flip + Resize Fix
+
+### Timeline axis flip (bottom=early, top=late)
+- `time_to_y(t) = size.y - (t - scroll_offset) * pixels_per_second`
+- `y_to_time(y) = (size.y - y) / pixels_per_second + scroll_offset`
+- visible_start = scroll_offset (bottom/early), visible_end = scroll_offset + (h - TRACK_HEADER_HEIGHT) / pps (top/late)
+- `_zoom_at`: `scroll_offset = pivot_time - (size.y - mouse_pos.y) / new_pps`
+- Note move drag: `dt = -dy / pixels_per_second` (flipped sign — mouse down = earlier time)
+- Auto-scroll in ChartEditorMain: `target_scroll = time - visible_duration * 0.1` (playhead at bottom 10%)
+- `_scroll_by` direction unchanged: wheel_down = scroll_offset increases = see later time content
+
+### Window resize fix
+- Root scene node is `Node` (not Control), so `RootVBox`'s PRESET_FULL_RECT anchors don't work after window resize.
+- Fix: connect `get_viewport().size_changed` in ChartEditorMain._ready(), handler calls `vbox.set_deferred("size", Vector2(DisplayServer.window_get_size()))`.
+- Use `set_deferred` not direct assignment to avoid "non-equal opposite anchors" Godot warning.
+- `get_viewport().size_changed` works correctly for this; `get_tree().get_root().size_changed` also works.
+
+### Grid/ruler labels automatically correct
+- After `time_to_y` flip, `_draw_grid_lines`, `_draw_ruler`, `_draw_bpm_markers` all use `time_to_y()` so they automatically get correct Y positions — no additional changes needed.
+
 ## Task 6: Vertical Timeline
 
 ### Architecture change: horizontal → vertical timeline

@@ -162,6 +162,12 @@ func _ready() -> void:
 	# Connect window close request
 	get_tree().get_root().close_requested.connect(_on_window_close_requested)
 
+	# Window resize: keep RootVBox filling the window
+	get_viewport().size_changed.connect(_on_window_resized)
+	if vbox:
+		vbox.set_deferred("size", Vector2(DisplayServer.window_get_size()))
+		vbox.set_deferred("position", Vector2.ZERO)
+
 	# Wire up Timeline signals and callbacks (use dynamic connect since timeline is typed Control)
 	if timeline:
 		if timeline.has_signal("note_placed"):
@@ -1065,13 +1071,13 @@ func _on_audio_playhead_changed(time: float) -> void:
 	if timeline:
 		timeline.playhead_time = time
 		timeline.queue_redraw()
-	# Auto-scroll: keep playhead near the 80% mark of the visible timeline width
+	# Auto-scroll (flipped axis: bottom=early time): keep playhead near bottom 10%
 	if timeline and timeline.size.y > 0:
-		var visible_height = (timeline.size.y - 24.0) / pixels_per_second
+		var visible_duration = (timeline.size.y - 24.0) / pixels_per_second
 		var scroll_start = timeline.scroll_offset
-		# Only scroll if playhead is near the bottom 20% or above visible area
-		if time > scroll_start + visible_height * 0.8 or time < scroll_start:
-			var target_scroll = time - visible_height * 0.8
+		# Scroll when playhead exits the lower 80% of visible area or goes above visible area
+		if time < scroll_start or time > scroll_start + visible_duration * 0.8:
+			var target_scroll = time - visible_duration * 0.1
 			timeline.scroll_offset = max(0.0, target_scroll)
 			# Sync VScrollBar
 			var vscroll = get_node_or_null("RootVBox/MainArea/TimelineArea/VScrollBar")
@@ -1104,5 +1110,11 @@ func _show_error(msg: String) -> void:
 		accept_dialog.popup_centered()
 	else:
 		push_error(msg)
+
+func _on_window_resized() -> void:
+	var vbox = get_node_or_null("RootVBox")
+	if vbox:
+		vbox.set_deferred("size", Vector2(DisplayServer.window_get_size()))
+		vbox.set_deferred("position", Vector2.ZERO)
 
 #endregion

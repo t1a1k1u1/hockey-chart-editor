@@ -92,10 +92,10 @@ func get_col_width() -> float:
 	return (size.x - CONTENT_OFFSET_X) / float(NUM_COLS)
 
 func time_to_y(time: float) -> float:
-	return TRACK_HEADER_HEIGHT + (time - scroll_offset) * pixels_per_second
+	return size.y - (time - scroll_offset) * pixels_per_second
 
 func y_to_time(y: float) -> float:
-	return (y - TRACK_HEADER_HEIGHT) / pixels_per_second + scroll_offset
+	return (size.y - y) / pixels_per_second + scroll_offset
 
 func col_to_x(col: int) -> float:
 	var cw = get_col_width()
@@ -133,6 +133,7 @@ func _draw() -> void:
 	if chart_data != null:
 		bpm_changes = chart_data.meta.get("bpm_changes", [])
 
+	# Flipped axis: bottom = early time (scroll_offset), top = later time
 	var visible_start = scroll_offset
 	var visible_end = scroll_offset + (h - TRACK_HEADER_HEIGHT) / pixels_per_second
 
@@ -689,7 +690,8 @@ func _handle_mouse_motion(mme: InputEventMouseMotion) -> void:
 
 	if _note_move_active and _note_move_index >= 0:
 		var dy = mme.position.y - _note_move_origin_mouse_y
-		var dt = dy / pixels_per_second
+		# Flipped axis: moving down (positive dy) = earlier time (smaller time)
+		var dt = -dy / pixels_per_second
 		var new_time = max(0.0, _snap_time(_note_move_original_time + dt))
 		_note_move_preview_time = new_time
 
@@ -840,10 +842,10 @@ func _emit_selection_cleared() -> void:
 func _zoom_at(mouse_pos: Vector2, factor: float) -> void:
 	var time_at_mouse = y_to_time(mouse_pos.y)
 	var new_pps: float = clamp(pixels_per_second * factor, 50.0, 2000.0)
-	# Keep time_at_mouse at same Y position:
-	# y = TRACK_HEADER_HEIGHT + (time - scroll_offset) * pps
-	# => scroll_offset = time - (y - TRACK_HEADER_HEIGHT) / pps
-	scroll_offset = time_at_mouse - (mouse_pos.y - TRACK_HEADER_HEIGHT) / new_pps
+	# Keep time_at_mouse at same Y position (flipped axis):
+	# y = size.y - (time - scroll_offset) * pps
+	# => scroll_offset = time - (size.y - y) / pps
+	scroll_offset = time_at_mouse - (size.y - mouse_pos.y) / new_pps
 	scroll_offset = max(scroll_offset, 0.0)
 	pixels_per_second = new_pps
 	_update_vscroll()
