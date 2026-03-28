@@ -138,78 +138,27 @@ func _initialize() -> void:
 	main_hbox.add_theme_constant_override("separation", 0)
 	vbox.add_child(main_hbox)
 
-	# Track Header (120px)
-	var track_header_panel = PanelContainer.new()
-	track_header_panel.name = "TrackHeaderPanel"
-	track_header_panel.custom_minimum_size.x = 120
-	main_hbox.add_child(track_header_panel)
-
-	var track_header_vbox = VBoxContainer.new()
-	track_header_vbox.name = "TrackHeaderList"
-	track_header_vbox.add_theme_constant_override("separation", 0)
-	track_header_panel.add_child(track_header_vbox)
-
-	# Build track row labels with colored backgrounds
-	# Colors: TOP0-2: #3A2200 orange, NORMAL: #001A3A blue, V0-6: #001228 dark blue
-	var row_configs = [
-		["TOP 0", Color(0.227, 0.133, 0.0)],     # #3A2200
-		["TOP 1", Color(0.227, 0.133, 0.0)],
-		["TOP 2", Color(0.227, 0.133, 0.0)],
-		["NORMAL", Color(0.0, 0.102, 0.227)],     # #001A3A
-		["V 0", Color(0.0, 0.071, 0.157)],        # #001228
-		["V 1", Color(0.0, 0.071, 0.157)],
-		["V 2", Color(0.0, 0.071, 0.157)],
-		["V 3", Color(0.0, 0.071, 0.157)],
-		["V 4", Color(0.0, 0.071, 0.157)],
-		["V 5", Color(0.0, 0.071, 0.157)],
-		["V 6", Color(0.0, 0.071, 0.157)],
-	]
-	for i in range(row_configs.size()):
-		# Add 4px separator before rows 1,2,3,4
-		if i == 1 or i == 2 or i == 3 or i == 4:
-			var sep = Panel.new()
-			sep.name = "TrackSep%d" % i
-			sep.custom_minimum_size = Vector2(0, 4)
-			var sep_style = StyleBoxFlat.new()
-			sep_style.bg_color = Color(0.1, 0.1, 0.1, 1.0)
-			sep.add_theme_stylebox_override("panel", sep_style)
-			track_header_vbox.add_child(sep)
-
-		# Row panel with colored background
-		var row_panel = Panel.new()
-		row_panel.name = "RowPanel%d" % i
-		row_panel.custom_minimum_size = Vector2(0, 32)
-		var bg_style = StyleBoxFlat.new()
-		bg_style.bg_color = row_configs[i][1]
-		row_panel.add_theme_stylebox_override("panel", bg_style)
-		track_header_vbox.add_child(row_panel)
-
-		var row_label = Label.new()
-		row_label.name = "Row%d" % i
-		row_label.text = row_configs[i][0]
-		row_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		row_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		row_label.modulate = Color(0.9, 0.9, 0.9, 1.0)
-		row_panel.add_child(row_label)
-
-	# Timeline Area (expand)
-	var timeline_vbox = VBoxContainer.new()
-	timeline_vbox.name = "TimelineArea"
-	timeline_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	timeline_vbox.add_theme_constant_override("separation", 0)
-	main_hbox.add_child(timeline_vbox)
+	# Timeline Area (expand) — Timeline + VScrollBar side by side
+	var timeline_hbox = HBoxContainer.new()
+	timeline_hbox.name = "TimelineArea"
+	timeline_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	timeline_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	timeline_hbox.add_theme_constant_override("separation", 0)
+	main_hbox.add_child(timeline_hbox)
 
 	var timeline = Control.new()
 	timeline.name = "Timeline"
 	timeline.set_script(load("res://scripts/Timeline.gd"))
+	timeline.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	timeline.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	timeline.clip_contents = true
-	timeline_vbox.add_child(timeline)
+	timeline_hbox.add_child(timeline)
 
-	var hscroll = HScrollBar.new()
-	hscroll.name = "HScrollBar"
-	timeline_vbox.add_child(hscroll)
+	var vscroll = VScrollBar.new()
+	vscroll.name = "VScrollBar"
+	vscroll.custom_minimum_size.x = 16
+	vscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	timeline_hbox.add_child(vscroll)
 
 	# Property Panel (240px)
 	var prop_panel = PanelContainer.new()

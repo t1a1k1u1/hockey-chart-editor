@@ -1,5 +1,46 @@
 # Project Memory
 
+## Task 6: Vertical Timeline
+
+### Architecture change: horizontal → vertical timeline
+- Timeline.gd was completely rewritten. X=columns (11 total: TOP0-2, NORMAL, V0-6), Y=time.
+- RULER_WIDTH=60px left edge, BPM_BAND_WIDTH=16px next to ruler, TRACK_HEADER_HEIGHT=24px top.
+- CONTENT_OFFSET_X = RULER_WIDTH + BPM_BAND_WIDTH = 76px.
+- `time_to_y(t)` = TRACK_HEADER_HEIGHT + (t - scroll_offset) * pixels_per_second.
+- `col_to_x(col)` = CONTENT_OFFSET_X + col * col_width + col_width * 0.5 (center of column).
+
+### NoteRenderer.gd signature change
+- New signature: `draw_note(canvas, note, scroll_offset, pps, is_selected, grid_sec, col_width, content_offset_x, header_height)`.
+- Removed old row-based drawing. Now column-based with vertical note orientation.
+- Normal notes: wide rectangles (col_width * 0.8 wide, grid_sec * pps tall minimum 8px).
+- Long notes: vertical bands with circular caps at top and bottom.
+- Chain notes: connector lines drawn vertically between members.
+
+### Scene builder: TrackHeaderPanel removed
+- TrackHeaderPanel (120px left sidebar with row labels) was removed from the HBoxContainer.
+- Track header is now drawn inside Timeline._draw() as the top 24px band.
+- TimelineArea is now HBoxContainer (not VBoxContainer): Timeline on left, VScrollBar on right.
+- VScrollBar replaces HScrollBar.
+
+### ChartEditorMain auto-scroll for vertical
+- `_on_audio_playhead_changed` now checks `timeline.size.y` and scrolls vertically.
+- `visible_height = (timeline.size.y - 24.0) / pixels_per_second` (subtract header height).
+- VScrollBar node path: `RootVBox/MainArea/TimelineArea/VScrollBar`.
+- Added `_on_vscroll_changed` callback.
+
+### VScrollBar in Timeline._ready()
+- Timeline._ready() auto-connects to sibling VScrollBar via `get_parent().get_node_or_null("VScrollBar")`.
+- Timeline._update_vscroll() sets max_value, page, value.
+
+### visual_qa.py encoding issue on Windows
+- `pathlib.Path.read_text()` without encoding= fails with cp932 on Windows for UTF-8 files.
+- Fix: use `.read_text(encoding='utf-8')`.
+- Also: `gemini-2.0-flash` is deprecated, use `gemini-2.5-flash`.
+
+### Chart load timing in test harness
+- `_load_from_path` called from `_initialize()` fails because chart_data is nil (set in `_ready()`).
+- Solution: call `_load_from_path` in frame 1 of `_process()` (after `_ready()` has run).
+
 ## Task 5: Presentation Video
 
 ### Video capture on Windows

@@ -5,63 +5,18 @@
 [ext_resource type="Script" path="res://scripts/PropertyPanel.gd" id="3_2pvn5"]
 [ext_resource type="Script" path="res://scripts/AudioPlayer.gd" id="4_s83rv"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u5rhh"]
-bg_color = Color(0.227, 0.133, 0, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dny36"]
-bg_color = Color(0.1, 0.1, 0.1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u4136"]
-bg_color = Color(0.227, 0.133, 0, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mjrex"]
-bg_color = Color(0.1, 0.1, 0.1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cpdpw"]
-bg_color = Color(0.227, 0.133, 0, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nigaq"]
-bg_color = Color(0.1, 0.1, 0.1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_siltq"]
-bg_color = Color(0, 0.102, 0.227, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_q8o10"]
-bg_color = Color(0.1, 0.1, 0.1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_keh2n"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jqhoc"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5fv7p"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ujtag"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ae8jr"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1iltw"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_nj1we"]
-bg_color = Color(0, 0.071, 0.157, 1)
-
-[node name="ChartEditor" type="Node" unique_id=1673734999]
+[node name="ChartEditor" type="Node" unique_id=1570031839]
 script = ExtResource("1_2vooy")
 
-[node name="RootVBox" type="VBoxContainer" parent="." unique_id=276085969]
+[node name="RootVBox" type="VBoxContainer" parent="." unique_id=1021219699]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="MenuBar" type="MenuBar" parent="RootVBox" unique_id=142120245]
+[node name="MenuBar" type="MenuBar" parent="RootVBox" unique_id=484921668]
 layout_mode = 2
 
-[node name="FileMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1046331576]
+[node name="FileMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=780733661]
 item_count = 5
 item_0/text = "New"
 item_0/id = 0
@@ -75,47 +30,47 @@ item_4/text = "Save As..."
 item_4/id = 3
 metadata/_menu_name = "File"
 
-[node name="EditMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=541607865]
+[node name="EditMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1881048803]
 item_count = 1
 item_0/text = "Metadata..."
 item_0/id = 0
 metadata/_menu_name = "Edit"
 
-[node name="ViewMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1557112364]
+[node name="ViewMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=2024141598]
 item_count = 1
 item_0/text = "Zoom Reset"
 item_0/id = 0
 metadata/_menu_name = "View"
 
-[node name="ControlBarPanel" type="PanelContainer" parent="RootVBox" unique_id=1580293280]
+[node name="ControlBarPanel" type="PanelContainer" parent="RootVBox" unique_id=513255721]
 layout_mode = 2
 
-[node name="ControlBar" type="HBoxContainer" parent="RootVBox/ControlBarPanel" unique_id=633540087]
+[node name="ControlBar" type="HBoxContainer" parent="RootVBox/ControlBarPanel" unique_id=226378273]
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=689601717]
+[node name="PlayButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2012844406]
 custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 text = "▶"
 
-[node name="StopButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=779124249]
+[node name="StopButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=998672479]
 custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 text = "■"
 
-[node name="TimeLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1664050765]
+[node name="TimeLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=123006287]
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "0:00.000"
 
-[node name="@VSeparator@23" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=848080328]
+[node name="@VSeparator@23" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1944970209]
 layout_mode = 2
 
-[node name="BpmLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1024726657]
+[node name="BpmLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2081978631]
 layout_mode = 2
 text = "BPM"
 
-[node name="BpmInput" type="SpinBox" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1945709743]
+[node name="BpmInput" type="SpinBox" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=197558067]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 min_value = 1.0
@@ -123,14 +78,14 @@ max_value = 999.0
 step = 0.1
 value = 120.0
 
-[node name="@VSeparator@26" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=332066474]
+[node name="@VSeparator@26" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1499795908]
 layout_mode = 2
 
-[node name="@Label@27" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1477354220]
+[node name="@Label@27" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=498842294]
 layout_mode = 2
 text = "Snap"
 
-[node name="SnapDivSelect" type="OptionButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1100417349]
+[node name="SnapDivSelect" type="OptionButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=705902001]
 layout_mode = 2
 selected = 3
 item_count = 6
@@ -147,324 +102,142 @@ popup/item_4/id = 4
 popup/item_5/text = "8"
 popup/item_5/id = 5
 
-[node name="SnapToggle" type="CheckButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=385101139]
+[node name="SnapToggle" type="CheckButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1968611362]
 layout_mode = 2
 button_pressed = true
 text = "Snap"
 
-[node name="@VSeparator@36" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1029159570]
+[node name="@VSeparator@36" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=271972287]
 layout_mode = 2
 
-[node name="@Label@37" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1075714249]
+[node name="@Label@37" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=265761042]
 layout_mode = 2
 text = "Type:"
 
-[node name="NoteType1" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=197118939]
+[node name="NoteType1" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2039537748]
 layout_mode = 2
 tooltip_text = "normal"
 toggle_mode = true
 text = "N"
 
-[node name="NoteType2" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1521551855]
+[node name="NoteType2" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1178603854]
 layout_mode = 2
 tooltip_text = "top"
 toggle_mode = true
 text = "T"
 
-[node name="NoteType3" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=950709605]
+[node name="NoteType3" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1993855701]
 layout_mode = 2
 tooltip_text = "vertical"
 toggle_mode = true
 text = "V"
 
-[node name="NoteType4" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1136352592]
+[node name="NoteType4" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=306200455]
 layout_mode = 2
 tooltip_text = "long_normal"
 toggle_mode = true
 text = "LN"
 
-[node name="NoteType5" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=95416696]
+[node name="NoteType5" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=16042052]
 layout_mode = 2
 tooltip_text = "long_top"
 toggle_mode = true
 text = "LT"
 
-[node name="NoteType6" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=706938296]
+[node name="NoteType6" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2088792132]
 layout_mode = 2
 tooltip_text = "long_vertical"
 toggle_mode = true
 text = "LV"
 
-[node name="NoteType7" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1803688507]
+[node name="NoteType7" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=199046932]
 layout_mode = 2
 tooltip_text = "chain"
 toggle_mode = true
 text = "CH"
 
-[node name="@VSeparator@38" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1243921153]
+[node name="@VSeparator@38" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1025377109]
 layout_mode = 2
 
-[node name="@Label@39" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1264512693]
+[node name="@Label@39" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1402827219]
 layout_mode = 2
 text = "Offset"
 
-[node name="OffsetInput" type="SpinBox" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1125581556]
+[node name="OffsetInput" type="SpinBox" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=83400930]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
 min_value = -10.0
 max_value = 10.0
 step = 0.001
 
-[node name="MainArea" type="HBoxContainer" parent="RootVBox" unique_id=820890488]
+[node name="MainArea" type="HBoxContainer" parent="RootVBox" unique_id=1998805749]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="TrackHeaderPanel" type="PanelContainer" parent="RootVBox/MainArea" unique_id=1787594154]
-custom_minimum_size = Vector2(120, 0)
-layout_mode = 2
-
-[node name="TrackHeaderList" type="VBoxContainer" parent="RootVBox/MainArea/TrackHeaderPanel" unique_id=1906262014]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="HeaderSpacer" type="Control" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1111111111]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-
-[node name="RowPanel0" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1012040552]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_u5rhh")
-
-[node name="Row0" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel0" unique_id=1310714982]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "TOP 0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TrackSep1" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1529579961]
-custom_minimum_size = Vector2(0, 4)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_dny36")
-
-[node name="RowPanel1" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1222660426]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_u4136")
-
-[node name="Row1" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel1" unique_id=1393385859]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "TOP 1"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TrackSep2" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1987054730]
-custom_minimum_size = Vector2(0, 4)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_mjrex")
-
-[node name="RowPanel2" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=439802709]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_cpdpw")
-
-[node name="Row2" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel2" unique_id=64105104]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "TOP 2"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TrackSep3" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=2137141001]
-custom_minimum_size = Vector2(0, 4)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_nigaq")
-
-[node name="RowPanel3" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=23357831]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_siltq")
-
-[node name="Row3" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel3" unique_id=279363907]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "NORMAL"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TrackSep4" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=458694157]
-custom_minimum_size = Vector2(0, 4)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_q8o10")
-
-[node name="RowPanel4" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1345568894]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_keh2n")
-
-[node name="Row4" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel4" unique_id=65068305]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RowPanel5" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1007060685]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_jqhoc")
-
-[node name="Row5" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel5" unique_id=485403660]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 1"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RowPanel6" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1477874458]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_5fv7p")
-
-[node name="Row6" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel6" unique_id=1308182597]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 2"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RowPanel7" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=605787074]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_ujtag")
-
-[node name="Row7" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel7" unique_id=602095907]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 3"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RowPanel8" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=55341628]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_ae8jr")
-
-[node name="Row8" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel8" unique_id=150296105]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 4"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RowPanel9" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1994321695]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_1iltw")
-
-[node name="Row9" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel9" unique_id=1039902583]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 5"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="RowPanel10" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1337818137]
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_nj1we")
-
-[node name="Row10" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList/RowPanel10" unique_id=594789955]
-modulate = Color(0.9, 0.9, 0.9, 1)
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-text = "V 6"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TimelineArea" type="VBoxContainer" parent="RootVBox/MainArea" unique_id=1447088804]
+[node name="TimelineArea" type="HBoxContainer" parent="RootVBox/MainArea" unique_id=709639874]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="Timeline" type="Control" parent="RootVBox/MainArea/TimelineArea" unique_id=1978362631]
+[node name="Timeline" type="Control" parent="RootVBox/MainArea/TimelineArea" unique_id=52071953]
 clip_contents = true
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("2_0874k")
 
-[node name="HScrollBar" type="HScrollBar" parent="RootVBox/MainArea/TimelineArea" unique_id=453978105]
-layout_mode = 2
-
-[node name="PropertyPanelContainer" type="PanelContainer" parent="RootVBox/MainArea" unique_id=1371356319]
-custom_minimum_size = Vector2(240, 0)
-layout_mode = 2
-
-[node name="PropertyPanel" type="ScrollContainer" parent="RootVBox/MainArea/PropertyPanelContainer" unique_id=1050432005]
+[node name="VScrollBar" type="VScrollBar" parent="RootVBox/MainArea/TimelineArea" unique_id=76166911]
+custom_minimum_size = Vector2(16, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PropertyPanelContent" type="VBoxContainer" parent="RootVBox/MainArea/PropertyPanelContainer/PropertyPanel" unique_id=1288900569]
+[node name="PropertyPanelContainer" type="PanelContainer" parent="RootVBox/MainArea" unique_id=1918354623]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="PropertyPanel" type="ScrollContainer" parent="RootVBox/MainArea/PropertyPanelContainer" unique_id=1231725037]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PropertyPanelContent" type="VBoxContainer" parent="RootVBox/MainArea/PropertyPanelContainer/PropertyPanel" unique_id=911478782]
 layout_mode = 2
 size_flags_horizontal = 3
 script = ExtResource("3_2pvn5")
 
-[node name="StatusBar" type="PanelContainer" parent="RootVBox" unique_id=1086392234]
+[node name="StatusBar" type="PanelContainer" parent="RootVBox" unique_id=379407547]
 layout_mode = 2
 
-[node name="StatusLabel" type="Label" parent="RootVBox/StatusBar" unique_id=966578956]
+[node name="StatusLabel" type="Label" parent="RootVBox/StatusBar" unique_id=2006322061]
 layout_mode = 2
 text = "Ready — No file loaded"
 
-[node name="FileDialog" type="FileDialog" parent="." unique_id=522257101]
+[node name="FileDialog" type="FileDialog" parent="." unique_id=109133920]
 size = Vector2i(900, 600)
 access = 2
 filters = PackedStringArray("*.json ; Chart JSON")
 
-[node name="ConfirmationDialog" type="ConfirmationDialog" parent="." unique_id=2117392166]
+[node name="ConfirmationDialog" type="ConfirmationDialog" parent="." unique_id=1043042551]
 dialog_text = "保存しますか？
 Save changes before continuing?"
 
-[node name="AcceptDialog" type="AcceptDialog" parent="." unique_id=1511307558]
+[node name="AcceptDialog" type="AcceptDialog" parent="." unique_id=1594588150]
 
-[node name="MetadataDialog" type="Window" parent="." unique_id=706957651]
+[node name="MetadataDialog" type="Window" parent="." unique_id=1498053698]
 title = "Edit Metadata"
 size = Vector2i(400, 320)
 visible = false
 transient = true
 exclusive = true
 
-[node name="MetaVBox" type="VBoxContainer" parent="MetadataDialog" unique_id=255856626]
+[node name="MetaVBox" type="VBoxContainer" parent="MetadataDialog" unique_id=1357126992]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_constants/separation = 6
 
-[node name="MetaMargin" type="MarginContainer" parent="MetadataDialog/MetaVBox" unique_id=2035335994]
+[node name="MetaMargin" type="MarginContainer" parent="MetadataDialog/MetaVBox" unique_id=1183907317]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 12
@@ -472,100 +245,100 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 
-[node name="MetaForm" type="VBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin" unique_id=988788214]
+[node name="MetaForm" type="VBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin" unique_id=2049838811]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="@HBoxContainer@199" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=473548436]
+[node name="@HBoxContainer@199" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=713924518]
 layout_mode = 2
 
-[node name="@Label@198" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@199" unique_id=1202179168]
+[node name="@Label@198" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@199" unique_id=673081216]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Title:"
 
-[node name="MetaTitleEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@199" unique_id=1641634549]
+[node name="MetaTitleEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@199" unique_id=1596282656]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="@HBoxContainer@201" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=637737157]
+[node name="@HBoxContainer@201" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1045341448]
 layout_mode = 2
 
-[node name="@Label@200" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@201" unique_id=1989258485]
+[node name="@Label@200" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@201" unique_id=84715796]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Artist:"
 
-[node name="MetaArtistEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@201" unique_id=1240218968]
+[node name="MetaArtistEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@201" unique_id=1651820302]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="@HBoxContainer@203" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1548500287]
+[node name="@HBoxContainer@203" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1933908301]
 layout_mode = 2
 
-[node name="@Label@202" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@203" unique_id=1906207356]
+[node name="@Label@202" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@203" unique_id=606881633]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Audio:"
 
-[node name="MetaAudioEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@203" unique_id=2118336433]
+[node name="MetaAudioEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@203" unique_id=1521278551]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="@HBoxContainer@207" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1741532547]
+[node name="@HBoxContainer@207" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=106889678]
 layout_mode = 2
 
-[node name="@Label@204" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@207" unique_id=1560216523]
+[node name="@Label@204" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@207" unique_id=1532491756]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Level:"
 
-[node name="MetaLevelSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@207" unique_id=817871347]
+[node name="MetaLevelSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@207" unique_id=1626528503]
 layout_mode = 2
 min_value = 1.0
 max_value = 99.0
 value = 1.0
 
-[node name="@HBoxContainer@211" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=915025684]
+[node name="@HBoxContainer@211" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=322707277]
 layout_mode = 2
 
-[node name="@Label@208" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@211" unique_id=2110771542]
+[node name="@Label@208" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@211" unique_id=22963130]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "BPM:"
 
-[node name="MetaBpmSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@211" unique_id=586458306]
+[node name="MetaBpmSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@211" unique_id=1501642440]
 layout_mode = 2
 min_value = 1.0
 max_value = 999.0
 step = 0.1
 value = 120.0
 
-[node name="@HBoxContainer@215" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1627850336]
+[node name="@HBoxContainer@215" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1475155253]
 layout_mode = 2
 
-[node name="@Label@212" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@215" unique_id=1886627704]
+[node name="@Label@212" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@215" unique_id=2107461312]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Offset:"
 
-[node name="MetaOffsetSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@215" unique_id=532862155]
+[node name="MetaOffsetSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@215" unique_id=84665104]
 layout_mode = 2
 min_value = -10.0
 max_value = 10.0
 step = 0.001
 
-[node name="MetaBtnRow" type="HBoxContainer" parent="MetadataDialog/MetaVBox" unique_id=1792873176]
+[node name="MetaBtnRow" type="HBoxContainer" parent="MetadataDialog/MetaVBox" unique_id=604251753]
 layout_mode = 2
 alignment = 2
 
-[node name="MetaOkBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=1167431173]
+[node name="MetaOkBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=1233308536]
 layout_mode = 2
 text = "OK"
 
-[node name="MetaCancelBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=2092440537]
+[node name="MetaCancelBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=199900097]
 layout_mode = 2
 text = "Cancel"
 
-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=432509549]
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=1481796213]
 script = ExtResource("4_s83rv")

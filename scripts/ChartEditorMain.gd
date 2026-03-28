@@ -91,9 +91,9 @@ func _ready() -> void:
 			var tl_area = main_area.get_node_or_null("TimelineArea")
 			if tl_area:
 				timeline = tl_area.get_node_or_null("Timeline")
-				var hscroll = tl_area.get_node_or_null("HScrollBar")
-				if hscroll and timeline:
-					hscroll.value_changed.connect(_on_hscroll_changed)
+				var vscroll = tl_area.get_node_or_null("VScrollBar")
+				if vscroll and timeline:
+					vscroll.value_changed.connect(_on_vscroll_changed)
 			var prop_cont = main_area.get_node_or_null("PropertyPanelContainer")
 			if prop_cont:
 				var scroll = prop_cont.get_node_or_null("PropertyPanel")
@@ -435,6 +435,11 @@ func stop_playback() -> void:
 		time_label.text = _format_time(playhead_time)
 
 func _on_hscroll_changed(value: float) -> void:
+	if timeline:
+		timeline.scroll_offset = value
+		timeline.queue_redraw()
+
+func _on_vscroll_changed(value: float) -> void:
 	if timeline:
 		timeline.scroll_offset = value
 		timeline.queue_redraw()
@@ -1061,20 +1066,19 @@ func _on_audio_playhead_changed(time: float) -> void:
 		timeline.playhead_time = time
 		timeline.queue_redraw()
 	# Auto-scroll: keep playhead near the 80% mark of the visible timeline width
-	if timeline and timeline.size.x > 0:
-		var visible_width = timeline.size.x / pixels_per_second
+	if timeline and timeline.size.y > 0:
+		var visible_height = (timeline.size.y - 24.0) / pixels_per_second
 		var scroll_start = timeline.scroll_offset
-		var scroll_end = scroll_start + visible_width
-		# Only scroll if playhead is outside [scroll_start, scroll_start + visible_width*0.8]
-		if time > scroll_start + visible_width * 0.8 or time < scroll_start:
-			var target_scroll = time - visible_width * 0.8
+		# Only scroll if playhead is near the bottom 20% or above visible area
+		if time > scroll_start + visible_height * 0.8 or time < scroll_start:
+			var target_scroll = time - visible_height * 0.8
 			timeline.scroll_offset = max(0.0, target_scroll)
-			# Sync HScrollBar
-			var hscroll = get_node_or_null("RootVBox/MainArea/TimelineArea/HScrollBar")
-			if hscroll:
-				hscroll.set_block_signals(true)
-				hscroll.value = timeline.scroll_offset
-				hscroll.set_block_signals(false)
+			# Sync VScrollBar
+			var vscroll = get_node_or_null("RootVBox/MainArea/TimelineArea/VScrollBar")
+			if vscroll:
+				vscroll.set_block_signals(true)
+				vscroll.value = timeline.scroll_offset
+				vscroll.set_block_signals(false)
 			timeline.queue_redraw()
 
 func _update_property_panel() -> void:
