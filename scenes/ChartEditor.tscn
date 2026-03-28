@@ -228,6 +228,10 @@ layout_mode = 2
 layout_mode = 2
 theme_override_constants/separation = 0
 
+[node name="HeaderSpacer" type="Control" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1111111111]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+
 [node name="RowPanel0" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1012040552]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2

@@ -1,5 +1,26 @@
 # Project Memory
 
+## Task 2: Timeline + BPM Grid + Note Rendering
+
+### TrackHeader vs Timeline vertical alignment
+- The Timeline control has a 36px header at top (RULER_HEIGHT=20 + BPM_BAND_HEIGHT=16). The TrackHeaderList (VBoxContainer) starts at y=0 with no header. This causes 36px vertical misalignment.
+- Fix: Add a `HeaderSpacer` Control node (custom_minimum_size.y=36) as the FIRST child of TrackHeaderList in the .tscn scene. This pushes all row labels down to match the timeline content area.
+- The NoteRenderer.get_row_y() must also include this 36px offset (HEADER_HEIGHT constant).
+
+### Timeline HScrollBar wiring
+- Timeline._ready() auto-connects to sibling HScrollBar via `get_parent().get_node_or_null("HScrollBar")`.
+- ChartEditorMain._on_hscroll_changed() updates timeline.scroll_offset directly.
+- Both paths update the scrollbar value via _update_hscroll() to keep them in sync.
+
+### BPM grid line rendering
+- get_grid_lines() uses fmod with epsilon tolerance to classify measure/beat/sub lines.
+- Grid lines draw from content_top (ruler+bpm_band height) to bottom of canvas.
+- Ruler only draws measure and beat lines (not sub-divisions) for cleanliness.
+
+### Note rendering row Y
+- NoteRenderer.HEADER_HEIGHT = 36 (ruler 20 + bpm_band 16) must be added to all row Y calculations.
+- Timeline.get_row_y() and NoteRenderer.get_row_y() both use the same formula: HEADER_HEIGHT + row*32 + sep_count*4.
+
 ## Task 1: Core UI + File I/O
 
 ### Godot Window nodes auto-show
