@@ -48,6 +48,14 @@ var _file_dialog_mode: String = ""   # "open", "save_as"
 
 # BPM change being edited in PropertyPanel
 var _selected_bpm_change_index: int = -1
+var _root_vbox: Control = null
+
+func _process(_delta: float) -> void:
+	if _root_vbox:
+		var target = get_viewport().get_visible_rect().size
+		if _root_vbox.size != target:
+			_root_vbox.size = target
+			_root_vbox.position = Vector2.ZERO
 
 func _ready() -> void:
 	DisplayServer.window_set_min_size(Vector2i(1280, 720))
@@ -162,11 +170,8 @@ func _ready() -> void:
 	# Connect window close request
 	get_tree().get_root().close_requested.connect(_on_window_close_requested)
 
-	# Window resize: keep RootVBox filling the window
-	get_viewport().size_changed.connect(_on_window_resized)
-	if vbox:
-		vbox.set_deferred("size", Vector2(DisplayServer.window_get_size()))
-		vbox.set_deferred("position", Vector2.ZERO)
+	# Window resize: sync RootVBox every frame (anchor-based resize doesn't work with Node root)
+	_root_vbox = vbox
 
 	# Wire up Timeline signals and callbacks (use dynamic connect since timeline is typed Control)
 	if timeline:
@@ -1110,11 +1115,5 @@ func _show_error(msg: String) -> void:
 		accept_dialog.popup_centered()
 	else:
 		push_error(msg)
-
-func _on_window_resized() -> void:
-	var vbox = get_node_or_null("RootVBox")
-	if vbox:
-		vbox.set_deferred("size", Vector2(DisplayServer.window_get_size()))
-		vbox.set_deferred("position", Vector2.ZERO)
 
 #endregion
