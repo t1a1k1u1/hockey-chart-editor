@@ -1,0 +1,317 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ChartEditorMain.gd" id="1_2vooy"]
+[ext_resource type="Script" path="res://scripts/Timeline.gd" id="2_0874k"]
+[ext_resource type="Script" path="res://scripts/PropertyPanel.gd" id="3_2pvn5"]
+[ext_resource type="Script" path="res://scripts/AudioPlayer.gd" id="4_s83rv"]
+
+[node name="ChartEditor" type="Node" unique_id=1642462370]
+script = ExtResource("1_2vooy")
+
+[node name="RootVBox" type="VBoxContainer" parent="." unique_id=278447011]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MenuBar" type="MenuBar" parent="RootVBox" unique_id=142268116]
+layout_mode = 2
+
+[node name="FileMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=103991265]
+item_count = 5
+item_0/text = "New"
+item_0/id = 0
+item_1/text = "Open..."
+item_1/id = 1
+item_2/id = -1
+item_2/separator = true
+item_3/text = "Save"
+item_3/id = 2
+item_4/text = "Save As..."
+item_4/id = 3
+metadata/_menu_name = "File"
+
+[node name="EditMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1029885448]
+item_count = 4
+item_0/text = "Metadata..."
+item_0/id = 0
+item_1/id = -1
+item_1/separator = true
+item_2/text = "Undo"
+item_2/id = 1
+item_3/text = "Redo"
+item_3/id = 2
+metadata/_menu_name = "Edit"
+
+[node name="ViewMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=69064188]
+item_count = 1
+item_0/text = "Zoom Reset"
+item_0/id = 0
+metadata/_menu_name = "View"
+
+[node name="ControlBarPanel" type="PanelContainer" parent="RootVBox" unique_id=1312982009]
+layout_mode = 2
+
+[node name="ControlBar" type="HBoxContainer" parent="RootVBox/ControlBarPanel" unique_id=1037424795]
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1707155052]
+layout_mode = 2
+text = "▶"
+
+[node name="StopButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1438436188]
+layout_mode = 2
+text = "■"
+
+[node name="TimeLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1956255398]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "0:00.000"
+
+[node name="@VSeparator@23" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1757292304]
+layout_mode = 2
+
+[node name="BpmLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1196021937]
+layout_mode = 2
+text = "BPM"
+
+[node name="BpmInput" type="SpinBox" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1739478478]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+min_value = 1.0
+max_value = 999.0
+step = 0.1
+value = 120.0
+
+[node name="@VSeparator@26" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1892666634]
+layout_mode = 2
+
+[node name="@Label@27" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=803225859]
+layout_mode = 2
+text = "Snap"
+
+[node name="SnapDivSelect" type="OptionButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=474704349]
+layout_mode = 2
+selected = 3
+item_count = 6
+popup/item_0/text = "1"
+popup/item_0/id = 0
+popup/item_1/text = "2"
+popup/item_1/id = 1
+popup/item_2/text = "3"
+popup/item_2/id = 2
+popup/item_3/text = "4"
+popup/item_3/id = 3
+popup/item_4/text = "6"
+popup/item_4/id = 4
+popup/item_5/text = "8"
+popup/item_5/id = 5
+
+[node name="SnapToggle" type="CheckButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1189280092]
+layout_mode = 2
+button_pressed = true
+text = "Snap"
+
+[node name="@VSeparator@36" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=599739797]
+layout_mode = 2
+
+[node name="@Label@37" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1021515488]
+layout_mode = 2
+text = "Type:"
+
+[node name="NoteType1" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1985998441]
+layout_mode = 2
+tooltip_text = "normal"
+text = "N"
+
+[node name="NoteType2" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1101740673]
+layout_mode = 2
+tooltip_text = "top"
+text = "T"
+
+[node name="NoteType3" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=607699000]
+layout_mode = 2
+tooltip_text = "vertical"
+text = "V"
+
+[node name="NoteType4" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2055534471]
+layout_mode = 2
+tooltip_text = "long_normal"
+text = "LN"
+
+[node name="NoteType5" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1287731236]
+layout_mode = 2
+tooltip_text = "long_top"
+text = "LT"
+
+[node name="NoteType6" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=469133589]
+layout_mode = 2
+tooltip_text = "long_vertical"
+text = "LV"
+
+[node name="NoteType7" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1184014349]
+layout_mode = 2
+tooltip_text = "chain"
+text = "CH"
+
+[node name="@VSeparator@38" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1935736825]
+layout_mode = 2
+
+[node name="@Label@39" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1424962087]
+layout_mode = 2
+text = "Offset"
+
+[node name="OffsetInput" type="SpinBox" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=904837079]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+min_value = -10.0
+max_value = 10.0
+step = 0.001
+
+[node name="MainArea" type="HBoxContainer" parent="RootVBox" unique_id=960777231]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TrackHeaderPanel" type="PanelContainer" parent="RootVBox/MainArea" unique_id=390205946]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+
+[node name="TrackHeaderList" type="VBoxContainer" parent="RootVBox/MainArea/TrackHeaderPanel" unique_id=381205343]
+layout_mode = 2
+
+[node name="Row0" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=963023517]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "TOP 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="@Panel@42" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1208313370]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="Row1" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=976388899]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "TOP 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="@Panel@43" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=13811720]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="Row2" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1382780461]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "TOP 2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="@Panel@44" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1751200962]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="Row3" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=675453905]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "NORMAL"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="@Panel@45" type="Panel" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1732809106]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+
+[node name="Row4" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=642331030]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Row5" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1962855822]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Row6" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=807268167]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Row7" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1848580976]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 3"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Row8" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1433121539]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 4"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Row9" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=1551194440]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 5"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Row10" type="Label" parent="RootVBox/MainArea/TrackHeaderPanel/TrackHeaderList" unique_id=305512450]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "V 6"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TimelineArea" type="VBoxContainer" parent="RootVBox/MainArea" unique_id=321076786]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Timeline" type="Control" parent="RootVBox/MainArea/TimelineArea" unique_id=478390482]
+clip_contents = true
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("2_0874k")
+
+[node name="HScrollBar" type="HScrollBar" parent="RootVBox/MainArea/TimelineArea" unique_id=824525763]
+layout_mode = 2
+
+[node name="PropertyPanelContainer" type="PanelContainer" parent="RootVBox/MainArea" unique_id=1511857347]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="PropertyPanel" type="ScrollContainer" parent="RootVBox/MainArea/PropertyPanelContainer" unique_id=1618810583]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PropertyPanelContent" type="VBoxContainer" parent="RootVBox/MainArea/PropertyPanelContainer/PropertyPanel" unique_id=1876027885]
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("3_2pvn5")
+
+[node name="StatusBar" type="PanelContainer" parent="RootVBox" unique_id=1685647212]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="RootVBox/StatusBar" unique_id=306323591]
+layout_mode = 2
+text = "Ready — No file loaded"
+
+[node name="FileDialog" type="FileDialog" parent="." unique_id=2080508611]
+access = 2
+filters = PackedStringArray("*.json ; Chart JSON")
+
+[node name="ConfirmationDialog" type="ConfirmationDialog" parent="." unique_id=778662066]
+dialog_text = "保存しますか？"
+
+[node name="AcceptDialog" type="AcceptDialog" parent="." unique_id=616614488]
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=1394149315]
+script = ExtResource("4_s83rv")
