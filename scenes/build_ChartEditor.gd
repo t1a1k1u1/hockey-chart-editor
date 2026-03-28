@@ -30,9 +30,6 @@ func _initialize() -> void:
 	var edit_menu = PopupMenu.new()
 	edit_menu.name = "EditMenu"
 	edit_menu.add_item("Metadata...", 0)
-	edit_menu.add_separator()
-	edit_menu.add_item("Undo", 1)
-	edit_menu.add_item("Redo", 2)
 	menu_bar.add_child(edit_menu)
 	menu_bar.set_menu_title(1, "Edit")
 
@@ -54,11 +51,13 @@ func _initialize() -> void:
 	var play_btn = Button.new()
 	play_btn.name = "PlayButton"
 	play_btn.text = "▶"
+	play_btn.custom_minimum_size = Vector2(32, 0)
 	ctrl_bar.add_child(play_btn)
 
 	var stop_btn = Button.new()
 	stop_btn.name = "StopButton"
 	stop_btn.text = "■"
+	stop_btn.custom_minimum_size = Vector2(32, 0)
 	ctrl_bar.add_child(stop_btn)
 
 	var time_label = Label.new()
@@ -80,7 +79,7 @@ func _initialize() -> void:
 	bpm_input.max_value = 999.0
 	bpm_input.step = 0.1
 	bpm_input.value = 120.0
-	bpm_input.custom_minimum_size.x = 80
+	bpm_input.custom_minimum_size.x = 90
 	ctrl_bar.add_child(bpm_input)
 
 	ctrl_bar.add_child(VSeparator.new())
@@ -114,6 +113,7 @@ func _initialize() -> void:
 		btn.name = "NoteType%d" % (i + 1)
 		btn.text = note_types[i][0]
 		btn.tooltip_text = note_types[i][1]
+		btn.toggle_mode = true
 		ctrl_bar.add_child(btn)
 
 	ctrl_bar.add_child(VSeparator.new())
@@ -128,13 +128,14 @@ func _initialize() -> void:
 	offset_input.max_value = 10.0
 	offset_input.step = 0.001
 	offset_input.value = 0.0
-	offset_input.custom_minimum_size.x = 80
+	offset_input.custom_minimum_size.x = 90
 	ctrl_bar.add_child(offset_input)
 
 	# ---- Main Area (3 panels) ----
 	var main_hbox = HBoxContainer.new()
 	main_hbox.name = "MainArea"
 	main_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_hbox.add_theme_constant_override("separation", 0)
 	vbox.add_child(main_hbox)
 
 	# Track Header (120px)
@@ -145,40 +146,58 @@ func _initialize() -> void:
 
 	var track_header_vbox = VBoxContainer.new()
 	track_header_vbox.name = "TrackHeaderList"
+	track_header_vbox.add_theme_constant_override("separation", 0)
 	track_header_panel.add_child(track_header_vbox)
 
-	# Build track row labels
+	# Build track row labels with colored backgrounds
+	# Colors: TOP0-2: #3A2200 orange, NORMAL: #001A3A blue, V0-6: #001228 dark blue
 	var row_configs = [
-		["TOP 0", Color(0.35, 0.18, 0.0)],
-		["TOP 1", Color(0.35, 0.18, 0.0)],
-		["TOP 2", Color(0.35, 0.18, 0.0)],
-		["NORMAL", Color(0.0, 0.10, 0.22)],
-		["V 0", Color(0.0, 0.07, 0.15)],
-		["V 1", Color(0.0, 0.07, 0.15)],
-		["V 2", Color(0.0, 0.07, 0.15)],
-		["V 3", Color(0.0, 0.07, 0.15)],
-		["V 4", Color(0.0, 0.07, 0.15)],
-		["V 5", Color(0.0, 0.07, 0.15)],
-		["V 6", Color(0.0, 0.07, 0.15)],
+		["TOP 0", Color(0.227, 0.133, 0.0)],     # #3A2200
+		["TOP 1", Color(0.227, 0.133, 0.0)],
+		["TOP 2", Color(0.227, 0.133, 0.0)],
+		["NORMAL", Color(0.0, 0.102, 0.227)],     # #001A3A
+		["V 0", Color(0.0, 0.071, 0.157)],        # #001228
+		["V 1", Color(0.0, 0.071, 0.157)],
+		["V 2", Color(0.0, 0.071, 0.157)],
+		["V 3", Color(0.0, 0.071, 0.157)],
+		["V 4", Color(0.0, 0.071, 0.157)],
+		["V 5", Color(0.0, 0.071, 0.157)],
+		["V 6", Color(0.0, 0.071, 0.157)],
 	]
 	for i in range(row_configs.size()):
-		# Add separator before rows 1,2,3,4
+		# Add 4px separator before rows 1,2,3,4
 		if i == 1 or i == 2 or i == 3 or i == 4:
 			var sep = Panel.new()
-			sep.custom_minimum_size.y = 4
+			sep.name = "TrackSep%d" % i
+			sep.custom_minimum_size = Vector2(0, 4)
+			var sep_style = StyleBoxFlat.new()
+			sep_style.bg_color = Color(0.1, 0.1, 0.1, 1.0)
+			sep.add_theme_stylebox_override("panel", sep_style)
 			track_header_vbox.add_child(sep)
+
+		# Row panel with colored background
+		var row_panel = Panel.new()
+		row_panel.name = "RowPanel%d" % i
+		row_panel.custom_minimum_size = Vector2(0, 32)
+		var bg_style = StyleBoxFlat.new()
+		bg_style.bg_color = row_configs[i][1]
+		row_panel.add_theme_stylebox_override("panel", bg_style)
+		track_header_vbox.add_child(row_panel)
+
 		var row_label = Label.new()
 		row_label.name = "Row%d" % i
 		row_label.text = row_configs[i][0]
-		row_label.custom_minimum_size.y = 32
+		row_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		row_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		track_header_vbox.add_child(row_label)
+		row_label.modulate = Color(0.9, 0.9, 0.9, 1.0)
+		row_panel.add_child(row_label)
 
 	# Timeline Area (expand)
 	var timeline_vbox = VBoxContainer.new()
 	timeline_vbox.name = "TimelineArea"
 	timeline_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	timeline_vbox.add_theme_constant_override("separation", 0)
 	main_hbox.add_child(timeline_vbox)
 
 	var timeline = Control.new()
@@ -224,16 +243,125 @@ func _initialize() -> void:
 	file_dialog.name = "FileDialog"
 	file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	file_dialog.filters = PackedStringArray(["*.json ; Chart JSON"])
+	file_dialog.size = Vector2i(900, 600)
 	root.add_child(file_dialog)
 
 	var confirm_dialog = ConfirmationDialog.new()
 	confirm_dialog.name = "ConfirmationDialog"
-	confirm_dialog.dialog_text = "保存しますか？"
+	confirm_dialog.dialog_text = "保存しますか？\nSave changes before continuing?"
 	root.add_child(confirm_dialog)
 
 	var accept_dialog = AcceptDialog.new()
 	accept_dialog.name = "AcceptDialog"
 	root.add_child(accept_dialog)
+
+	# ---- Metadata Dialog (Window with form) ----
+	var meta_dialog = Window.new()
+	meta_dialog.name = "MetadataDialog"
+	meta_dialog.title = "Edit Metadata"
+	meta_dialog.size = Vector2i(400, 320)
+	meta_dialog.transient = true
+	meta_dialog.exclusive = true
+	meta_dialog.visible = false
+	root.add_child(meta_dialog)
+
+	var meta_vbox = VBoxContainer.new()
+	meta_vbox.name = "MetaVBox"
+	meta_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	meta_vbox.add_theme_constant_override("separation", 6)
+	meta_dialog.add_child(meta_vbox)
+
+	# Add margin container for padding
+	var meta_margin = MarginContainer.new()
+	meta_margin.name = "MetaMargin"
+	meta_margin.add_theme_constant_override("margin_left", 12)
+	meta_margin.add_theme_constant_override("margin_right", 12)
+	meta_margin.add_theme_constant_override("margin_top", 8)
+	meta_margin.add_theme_constant_override("margin_bottom", 8)
+	meta_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	meta_vbox.add_child(meta_margin)
+
+	var meta_form = VBoxContainer.new()
+	meta_form.name = "MetaForm"
+	meta_form.add_theme_constant_override("separation", 4)
+	meta_margin.add_child(meta_form)
+
+	var meta_fields = [
+		["Title:", "MetaTitleEdit", ""],
+		["Artist:", "MetaArtistEdit", ""],
+		["Audio:", "MetaAudioEdit", ""],
+	]
+	for mf in meta_fields:
+		var row = HBoxContainer.new()
+		var lbl = Label.new()
+		lbl.text = mf[0]
+		lbl.custom_minimum_size.x = 60
+		row.add_child(lbl)
+		var edit = LineEdit.new()
+		edit.name = mf[1]
+		edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(edit)
+		meta_form.add_child(row)
+
+	# Level row
+	var level_row = HBoxContainer.new()
+	var level_lbl = Label.new()
+	level_lbl.text = "Level:"
+	level_lbl.custom_minimum_size.x = 60
+	level_row.add_child(level_lbl)
+	var level_spin = SpinBox.new()
+	level_spin.name = "MetaLevelSpin"
+	level_spin.min_value = 1
+	level_spin.max_value = 99
+	level_spin.value = 1
+	level_row.add_child(level_spin)
+	meta_form.add_child(level_row)
+
+	# BPM row
+	var bpm_row = HBoxContainer.new()
+	var bpm_lbl2 = Label.new()
+	bpm_lbl2.text = "BPM:"
+	bpm_lbl2.custom_minimum_size.x = 60
+	bpm_row.add_child(bpm_lbl2)
+	var meta_bpm_spin = SpinBox.new()
+	meta_bpm_spin.name = "MetaBpmSpin"
+	meta_bpm_spin.min_value = 1.0
+	meta_bpm_spin.max_value = 999.0
+	meta_bpm_spin.step = 0.1
+	meta_bpm_spin.value = 120.0
+	bpm_row.add_child(meta_bpm_spin)
+	meta_form.add_child(bpm_row)
+
+	# Offset row
+	var offset_row2 = HBoxContainer.new()
+	var offset_lbl2 = Label.new()
+	offset_lbl2.text = "Offset:"
+	offset_lbl2.custom_minimum_size.x = 60
+	offset_row2.add_child(offset_lbl2)
+	var meta_offset_spin = SpinBox.new()
+	meta_offset_spin.name = "MetaOffsetSpin"
+	meta_offset_spin.min_value = -10.0
+	meta_offset_spin.max_value = 10.0
+	meta_offset_spin.step = 0.001
+	meta_offset_spin.value = 0.0
+	offset_row2.add_child(meta_offset_spin)
+	meta_form.add_child(offset_row2)
+
+	# OK / Cancel buttons
+	var btn_row = HBoxContainer.new()
+	btn_row.name = "MetaBtnRow"
+	btn_row.alignment = BoxContainer.ALIGNMENT_END
+	meta_vbox.add_child(btn_row)
+
+	var meta_ok = Button.new()
+	meta_ok.name = "MetaOkBtn"
+	meta_ok.text = "OK"
+	btn_row.add_child(meta_ok)
+
+	var meta_cancel = Button.new()
+	meta_cancel.name = "MetaCancelBtn"
+	meta_cancel.text = "Cancel"
+	btn_row.add_child(meta_cancel)
 
 	# ---- Audio Player ----
 	var audio_player = AudioStreamPlayer.new()
@@ -242,15 +370,23 @@ func _initialize() -> void:
 	root.add_child(audio_player)
 
 	# Save
-	_set_owners(root, root)
+	set_owner_on_new_nodes(root, root)
 	var packed = PackedScene.new()
-	packed.pack(root)
-	ResourceSaver.save(packed, "res://scenes/ChartEditor.tscn")
+	var err = packed.pack(root)
+	if err != OK:
+		push_error("Pack failed: " + str(err))
+		quit(1)
+		return
+	err = ResourceSaver.save(packed, "res://scenes/ChartEditor.tscn")
+	if err != OK:
+		push_error("Save failed: " + str(err))
+		quit(1)
+		return
 	print("Saved: res://scenes/ChartEditor.tscn")
 	quit(0)
 
-func _set_owners(node: Node, owner: Node) -> void:
+func set_owner_on_new_nodes(node: Node, owner: Node) -> void:
 	for c in node.get_children():
 		c.owner = owner
 		if c.scene_file_path.is_empty():
-			_set_owners(c, owner)
+			set_owner_on_new_nodes(c, owner)
