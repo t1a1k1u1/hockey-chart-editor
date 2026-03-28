@@ -20,6 +20,9 @@ var snap_enabled: bool = true
 var snap_division: int = 4
 var pixels_per_second: float = 200.0
 
+# Clipboard
+var _clipboard: Array = []
+
 # Pending action for "unsaved changes" guard
 var _pending_action: String = ""   # "new", "open", "quit"
 
@@ -39,7 +42,12 @@ var file_dialog: FileDialog = null
 var confirm_dialog: ConfirmationDialog = null
 var accept_dialog: AcceptDialog = null
 var metadata_dialog: Window = null
+var bpm_change_dialog: ConfirmationDialog = null
+var _bpm_change_spin: SpinBox = null
 var _file_dialog_mode: String = ""   # "open", "save_as"
+
+# BPM change being edited in PropertyPanel
+var _selected_bpm_change_index: int = -1
 
 func _ready() -> void:
 	DisplayServer.window_set_min_size(Vector2i(1280, 720))
@@ -73,7 +81,6 @@ func _ready() -> void:
 				if snap_div_select:
 					snap_div_select.item_selected.connect(_on_snap_div_selected)
 				# Note type buttons
-				var snap_vals = [1, 2, 3, 4, 6, 8]
 				for idx in range(7):
 					var btn = ctrl_bar.get_node_or_null("NoteType%d" % (idx + 1))
 					if btn:
@@ -138,11 +145,55 @@ func _ready() -> void:
 
 	audio_player = get_node_or_null("AudioStreamPlayer")
 
+	# Build BPM change dialog
+	_build_bpm_change_dialog()
+
 	# Connect window close request
 	get_tree().get_root().close_requested.connect(_on_window_close_requested)
 
+	# Wire up Timeline signals and callbacks (use dynamic connect since timeline is typed Control)
+	if timeline:
+		if timeline.has_signal("note_placed"):
+			timeline.connect("note_placed", _on_note_placed)
+		if timeline.has_signal("note_clicked"):
+			timeline.connect("note_clicked", _on_note_clicked)
+		if timeline.has_signal("ruler_clicked"):
+			timeline.connect("ruler_clicked", _on_ruler_clicked)
+		if timeline.has_signal("bpm_marker_clicked"):
+			timeline.connect("bpm_marker_clicked", _on_bpm_marker_clicked)
+		if timeline.has_method("set_action_callback"):
+			timeline.call("set_action_callback", _on_timeline_action_requested)
+		if timeline.has_method("set_move_action_callback"):
+			timeline.call("set_move_action_callback", _on_timeline_move_action)
+
+	# Wire up PropertyPanel signals
+	if property_panel:
+		if property_panel.has_signal("property_changed"):
+			property_panel.property_changed.connect(_on_property_changed)
+		if property_panel.has_signal("metadata_changed"):
+			property_panel.metadata_changed.connect(_on_metadata_field_changed)
+		if property_panel.has_signal("bpm_change_edited"):
+			property_panel.bpm_change_edited.connect(_on_bpm_change_edited)
+
 	_new_chart()
 	_update_note_type_buttons()
+
+func _build_bpm_change_dialog() -> void:
+	bpm_change_dialog = ConfirmationDialog.new()
+	bpm_change_dialog.title = "Add BPM Change"
+	var vb = VBoxContainer.new()
+	var lbl = Label.new()
+	lbl.text = "BPM value:"
+	vb.add_child(lbl)
+	_bpm_change_spin = SpinBox.new()
+	_bpm_change_spin.min_value = 1.0
+	_bpm_change_spin.max_value = 9999.0
+	_bpm_change_spin.step = 0.001
+	_bpm_change_spin.value = 120.0
+	vb.add_child(_bpm_change_spin)
+	bpm_change_dialog.add_child(vb)
+	bpm_change_dialog.confirmed.connect(_on_bpm_change_dialog_confirmed)
+	add_child(bpm_change_dialog)
 
 #region File Operations
 
@@ -153,12 +204,17 @@ func _new_chart() -> void:
 	undo_stack.clear()
 	redo_stack.clear()
 	selected_notes.clear()
+	_selected_bpm_change_index = -1
 	_sync_controls_to_chart()
 	_update_title()
 	_update_status()
 	if timeline:
 		timeline.chart_data = chart_data
+		timeline.selected_notes = selected_notes
 		timeline.queue_redraw()
+	if property_panel:
+		property_panel.set_chart_data(chart_data)
+		property_panel.show_metadata()
 	chart_loaded.emit()
 
 func _do_new() -> void:
@@ -224,6 +280,7 @@ func _load_from_path(path: String) -> void:
 	undo_stack.clear()
 	redo_stack.clear()
 	selected_notes.clear()
+	_selected_bpm_change_index = -1
 	# Try to auto-load audio
 	_try_load_audio(path)
 	_sync_controls_to_chart()
@@ -231,7 +288,11 @@ func _load_from_path(path: String) -> void:
 	_update_status()
 	if timeline:
 		timeline.chart_data = chart_data
+		timeline.selected_notes = selected_notes
 		timeline.queue_redraw()
+	if property_panel:
+		property_panel.set_chart_data(chart_data)
+		property_panel.show_metadata()
 	chart_loaded.emit()
 
 func _try_load_audio(chart_path: String) -> void:
@@ -499,6 +560,7 @@ func execute_action(action) -> void:
 	redo_stack.clear()
 	_mark_dirty()
 	_update_status()
+	_sync_selection_to_timeline()
 	if timeline:
 		timeline.queue_redraw()
 
@@ -510,6 +572,10 @@ func undo() -> void:
 	redo_stack.append(action)
 	_mark_dirty()
 	_update_status()
+	# Clear selection since indices may have shifted
+	selected_notes.clear()
+	_sync_selection_to_timeline()
+	_update_property_panel()
 	if timeline:
 		timeline.queue_redraw()
 
@@ -521,6 +587,159 @@ func redo() -> void:
 	undo_stack.append(action)
 	_mark_dirty()
 	_update_status()
+	selected_notes.clear()
+	_sync_selection_to_timeline()
+	_update_property_panel()
+	if timeline:
+		timeline.queue_redraw()
+
+#endregion
+
+#region Selection operations
+
+func select_all_notes() -> void:
+	selected_notes.clear()
+	for i in range(chart_data.notes.size()):
+		selected_notes.append(i)
+	_sync_selection_to_timeline()
+	_update_property_panel()
+	selection_changed.emit(selected_notes)
+
+func clear_selection() -> void:
+	selected_notes.clear()
+	_sync_selection_to_timeline()
+	_update_property_panel()
+	selection_changed.emit(selected_notes)
+
+func delete_selected() -> void:
+	if selected_notes.is_empty():
+		return
+	# Sort descending so indices remain valid after each deletion
+	var sorted_sel = selected_notes.duplicate()
+	sorted_sel.sort()
+	sorted_sel.reverse()
+	for idx in sorted_sel:
+		if idx >= 0 and idx < chart_data.notes.size():
+			var action_script = load("res://scripts/UndoRedoAction.gd")
+			var action = action_script.DeleteNoteAction.new(idx, chart_data.notes[idx])
+			action.execute(chart_data)
+			undo_stack.append(action)
+	redo_stack.clear()
+	selected_notes.clear()
+	_mark_dirty()
+	_update_status()
+	_sync_selection_to_timeline()
+	_update_property_panel()
+	if timeline:
+		timeline.queue_redraw()
+
+func duplicate_selected() -> void:
+	if selected_notes.is_empty():
+		return
+	var offset_time = 0.5  # duplicate shifted by 0.5s
+	var new_indices: Array = []
+	for idx in selected_notes:
+		if idx >= 0 and idx < chart_data.notes.size():
+			var dup = chart_data.notes[idx].duplicate(true)
+			dup["time"] = dup.get("time", 0.0) + offset_time
+			if dup.has("end_time"):
+				dup["end_time"] = dup["end_time"] + offset_time
+			var action_script = load("res://scripts/UndoRedoAction.gd")
+			var action = action_script.AddNoteAction.new(dup)
+			action.execute(chart_data)
+			undo_stack.append(action)
+			new_indices.append(chart_data.notes.size() - 1)
+	redo_stack.clear()
+	selected_notes = new_indices
+	_mark_dirty()
+	_update_status()
+	_sync_selection_to_timeline()
+	_update_property_panel()
+	if timeline:
+		timeline.queue_redraw()
+
+func copy_selected() -> void:
+	_clipboard.clear()
+	for idx in selected_notes:
+		if idx >= 0 and idx < chart_data.notes.size():
+			_clipboard.append(chart_data.notes[idx].duplicate(true))
+
+func paste_clipboard() -> void:
+	if _clipboard.is_empty():
+		return
+	# Find earliest time in clipboard
+	var min_time = INF
+	for note in _clipboard:
+		var t = note.get("time", 0.0)
+		if t < min_time:
+			min_time = t
+	var offset_time = playhead_time - min_time
+	var new_indices: Array = []
+	for note in _clipboard:
+		var dup = note.duplicate(true)
+		dup["time"] = dup.get("time", 0.0) + offset_time
+		if dup.has("end_time"):
+			dup["end_time"] = dup["end_time"] + offset_time
+		var action_script = load("res://scripts/UndoRedoAction.gd")
+		var action = action_script.AddNoteAction.new(dup)
+		action.execute(chart_data)
+		undo_stack.append(action)
+		new_indices.append(chart_data.notes.size() - 1)
+	redo_stack.clear()
+	selected_notes = new_indices
+	_mark_dirty()
+	_update_status()
+	_sync_selection_to_timeline()
+	_update_property_panel()
+	if timeline:
+		timeline.queue_redraw()
+
+func _sync_selection_to_timeline() -> void:
+	if timeline:
+		timeline.selected_notes = selected_notes
+		timeline.queue_redraw()
+
+#endregion
+
+#region BPM change operations
+
+func add_bpm_change_at_playhead() -> void:
+	# Show dialog to enter BPM value
+	if bpm_change_dialog == null or _bpm_change_spin == null:
+		return
+	var current_bpm = chart_data.bpm_at(playhead_time)
+	_bpm_change_spin.value = current_bpm
+	bpm_change_dialog.popup_centered()
+
+func _on_bpm_change_dialog_confirmed() -> void:
+	var new_bpm = _bpm_change_spin.value
+	# Don't add if time=0 already exists with different bpm (edit instead)
+	var new_change = {"time": playhead_time, "bpm": new_bpm}
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+	var action = action_script.AddBpmChangeAction.new(new_change)
+	execute_action(action)
+	if timeline:
+		timeline.queue_redraw()
+
+func _on_bpm_change_edited(change_index: int, field: String, value: Variant) -> void:
+	if chart_data == null:
+		return
+	var bpm_changes = chart_data.meta.get("bpm_changes", [])
+	if change_index < 0 or change_index >= bpm_changes.size():
+		return
+	var old_value = bpm_changes[change_index].get(field, 0.0)
+	if field == "bpm":
+		var action_script = load("res://scripts/UndoRedoAction.gd")
+		var action = action_script.EditPropertyAction.new(change_index, field, old_value, value)
+		# Apply directly to bpm_changes rather than notes
+		bpm_changes[change_index][field] = value
+		undo_stack.append(action)
+		redo_stack.clear()
+		_mark_dirty()
+	elif field == "time" and change_index > 0:
+		var action_script = load("res://scripts/UndoRedoAction.gd")
+		var action = action_script.MoveBpmChangeAction.new(change_index, old_value, float(value))
+		execute_action(action)
 	if timeline:
 		timeline.queue_redraw()
 
@@ -529,68 +748,280 @@ func redo() -> void:
 #region Keyboard input
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.is_action("file_new"):
-			_do_new()
-			get_viewport().set_input_as_handled()
-		elif event.is_action("file_open"):
-			_do_open()
-			get_viewport().set_input_as_handled()
-		elif event.is_action("file_save"):
-			_do_save()
-			get_viewport().set_input_as_handled()
-		elif event.is_action("file_save_as"):
-			_do_save_as()
-			get_viewport().set_input_as_handled()
-		elif event.is_action("edit_undo"):
-			undo()
-			get_viewport().set_input_as_handled()
-		elif event.is_action("edit_redo"):
-			redo()
-			get_viewport().set_input_as_handled()
+	if not (event is InputEventKey):
+		return
+	var ke = event as InputEventKey
+	if not ke.pressed or ke.echo:
+		return
+
+	# File operations (action-mapped)
+	if event.is_action("file_new"):
+		_do_new()
+		get_viewport().set_input_as_handled()
+		return
+	elif event.is_action("file_open"):
+		_do_open()
+		get_viewport().set_input_as_handled()
+		return
+	elif event.is_action("file_save"):
+		_do_save()
+		get_viewport().set_input_as_handled()
+		return
+	elif event.is_action("file_save_as"):
+		_do_save_as()
+		get_viewport().set_input_as_handled()
+		return
+
+	# Block shortcuts when a text field has focus (avoid overriding typing)
+	var focus = get_viewport().gui_get_focus_owner()
+	if focus and (focus is LineEdit or focus is TextEdit or focus is SpinBox):
+		return
+
+	var ctrl = ke.ctrl_pressed
+	var shift = ke.shift_pressed
+	var kc = ke.keycode
+
+	if ctrl and kc == KEY_Z:
+		undo()
+		get_viewport().set_input_as_handled()
+	elif ctrl and (kc == KEY_Y or (shift and kc == KEY_Z)):
+		redo()
+		get_viewport().set_input_as_handled()
+	elif ctrl and kc == KEY_A:
+		select_all_notes()
+		get_viewport().set_input_as_handled()
+	elif ctrl and kc == KEY_D:
+		duplicate_selected()
+		get_viewport().set_input_as_handled()
+	elif ctrl and kc == KEY_C:
+		copy_selected()
+		get_viewport().set_input_as_handled()
+	elif ctrl and kc == KEY_V:
+		paste_clipboard()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_DELETE:
+		if _selected_bpm_change_index > 0:
+			# Delete selected BPM change
+			var bpm_changes = chart_data.meta.get("bpm_changes", [])
+			if _selected_bpm_change_index < bpm_changes.size():
+				var action_script = load("res://scripts/UndoRedoAction.gd")
+				var action = action_script.DeleteBpmChangeAction.new(_selected_bpm_change_index, bpm_changes[_selected_bpm_change_index])
+				execute_action(action)
+				_selected_bpm_change_index = -1
+				_update_property_panel()
+		else:
+			delete_selected()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_ESCAPE:
+		clear_selection()
+		get_viewport().set_input_as_handled()
+	elif ctrl and kc == KEY_B:
+		add_bpm_change_at_playhead()
+		get_viewport().set_input_as_handled()
+	elif kc >= KEY_1 and kc <= KEY_7 and not ctrl:
+		set_note_type(kc - KEY_1)
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_S and not ctrl:
+		toggle_select_mode()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_TAB:
+		toggle_snap()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_BRACKETLEFT:
+		snap_coarser()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_BRACKETRIGHT:
+		snap_finer()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_SPACE:
+		toggle_playback()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_HOME:
+		set_playhead_time(0.0)
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_END:
+		var end_time = _get_chart_end_time()
+		set_playhead_time(end_time)
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_LEFT:
+		var step = _get_measure_duration() if shift else _get_grid_interval()
+		set_playhead_time(max(0.0, playhead_time - step))
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_RIGHT:
+		var step = _get_measure_duration() if shift else _get_grid_interval()
+		set_playhead_time(playhead_time + step)
+		get_viewport().set_input_as_handled()
+
+func set_note_type(idx: int) -> void:
+	var note_type_names = ["normal", "top", "vertical", "long_normal", "long_top", "long_vertical", "chain"]
+	if idx >= 0 and idx < note_type_names.size():
+		current_note_type = note_type_names[idx]
+		if timeline:
+			timeline.current_note_type = current_note_type
+		_update_note_type_buttons()
+
+func toggle_select_mode() -> void:
+	is_select_mode = not is_select_mode
+	if timeline:
+		timeline.is_select_mode = is_select_mode
+
+func toggle_snap() -> void:
+	snap_enabled = not snap_enabled
+	if snap_toggle:
+		snap_toggle.set_block_signals(true)
+		snap_toggle.button_pressed = snap_enabled
+		snap_toggle.set_block_signals(false)
+	if timeline:
+		timeline.snap_enabled = snap_enabled
+
+func snap_coarser() -> void:
+	var snap_vals = [1, 2, 3, 4, 6, 8]
+	var idx = snap_vals.find(snap_division)
+	if idx > 0:
+		snap_division = snap_vals[idx - 1]
+		if timeline:
+			timeline.snap_division = snap_division
+		if snap_div_select:
+			snap_div_select.selected = idx - 1
+
+func snap_finer() -> void:
+	var snap_vals = [1, 2, 3, 4, 6, 8]
+	var idx = snap_vals.find(snap_division)
+	if idx >= 0 and idx < snap_vals.size() - 1:
+		snap_division = snap_vals[idx + 1]
+		if timeline:
+			timeline.snap_division = snap_division
+		if snap_div_select:
+			snap_div_select.selected = idx + 1
+
+func toggle_playback() -> void:
+	if audio_player and audio_player.is_playing_audio():
+		audio_player.pause_playback()
+	elif audio_player:
+		audio_player.play_from(playhead_time, chart_data.meta.get("offset", 0.0))
+
+func set_playhead_time(t: float) -> void:
+	playhead_time = t
+	playhead_moved.emit(playhead_time)
+	if timeline:
+		timeline.playhead_time = playhead_time
+		timeline.queue_redraw()
+	_update_time_label()
+
+func _update_time_label() -> void:
+	if time_label:
+		var minutes = int(playhead_time) / 60
+		var seconds = fmod(playhead_time, 60.0)
+		time_label.text = "%d:%06.3f" % [minutes, seconds]
+
+func _get_grid_interval() -> float:
+	if chart_data == null:
+		return 0.25
+	var bpm_changes = chart_data.meta.get("bpm_changes", [])
+	var bpm_grid_inst = load("res://scripts/BpmGrid.gd").new()
+	return bpm_grid_inst.grid_interval(playhead_time, bpm_changes, snap_division)
+
+func _get_measure_duration() -> float:
+	if chart_data == null:
+		return 2.0
+	var bpm = chart_data.bpm_at(playhead_time)
+	return (60.0 / bpm) * 4.0
+
+func _get_chart_end_time() -> float:
+	if chart_data == null or chart_data.notes.is_empty():
+		return 0.0
+	var end_time = 0.0
+	for note in chart_data.notes:
+		var t = note.get("end_time", note.get("time", 0.0))
+		if t > end_time:
+			end_time = t
+		var chain_end = note.get("time", 0.0) + note.get("chain_count", 1) * note.get("chain_interval", 0.0)
+		if chain_end > end_time:
+			end_time = chain_end
+	return end_time
 
 #endregion
 
 #region Timeline callbacks
 
 func _on_note_placed(note_data: Dictionary) -> void:
-	chart_data.notes.append(note_data)
-	_mark_dirty()
-	_update_status()
-	if timeline:
-		timeline.queue_redraw()
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+	var action = action_script.AddNoteAction.new(note_data)
+	execute_action(action)
 
 func _on_note_clicked(note_data: Dictionary, note_index: int) -> void:
-	if not selected_notes.has(note_index):
+	if note_index < 0:
+		# Cleared
+		selected_notes.clear()
+		_selected_bpm_change_index = -1
+	elif not selected_notes.has(note_index):
 		selected_notes = [note_index]
 	else:
-		selected_notes = []
+		selected_notes = [note_index]
+	_sync_selection_to_timeline()
+	_update_property_panel()
 	selection_changed.emit(selected_notes)
-	if property_panel:
-		property_panel.show_selection(selected_notes)
 
 func _on_ruler_clicked(time: float) -> void:
-	playhead_time = time
-	playhead_moved.emit(time)
-	if timeline:
-		timeline.playhead_time = playhead_time
-		timeline.queue_redraw()
+	set_playhead_time(time)
 
 func _on_bpm_marker_clicked(bpm_change: Dictionary, change_index: int) -> void:
-	pass
+	_selected_bpm_change_index = change_index
+	selected_notes.clear()
+	_sync_selection_to_timeline()
+	if property_panel:
+		property_panel.show_bpm_change(bpm_change, change_index)
+	selection_changed.emit(selected_notes)
+
+func _on_timeline_action_requested(action) -> void:
+	execute_action(action)
+
+func _on_timeline_move_action(note_index: int, old_note: Dictionary, new_note: Dictionary) -> void:
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+	var action = action_script.MoveNoteAction.new(note_index, old_note, new_note)
+	execute_action(action)
 
 func _on_property_changed(note_index: int, field: String, value: Variant) -> void:
-	if note_index >= 0 and note_index < chart_data.notes.size():
-		chart_data.notes[note_index][field] = value
-		_mark_dirty()
-		if timeline:
-			timeline.queue_redraw()
+	if note_index < 0 or note_index >= chart_data.notes.size():
+		return
+	var old_value = chart_data.notes[note_index].get(field, null)
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+	var action = action_script.EditPropertyAction.new(note_index, field, old_value, value)
+	execute_action(action)
+
+func _on_metadata_field_changed(field: String, value: Variant) -> void:
+	chart_data.meta[field] = value
+	if field == "bpm":
+		if not chart_data.meta["bpm_changes"].is_empty():
+			chart_data.meta["bpm_changes"][0]["bpm"] = float(value)
+		if bpm_input:
+			bpm_input.set_block_signals(true)
+			bpm_input.value = float(value)
+			bpm_input.set_block_signals(false)
+	elif field == "offset":
+		if offset_input:
+			offset_input.set_block_signals(true)
+			offset_input.value = float(value)
+			offset_input.set_block_signals(false)
+	_mark_dirty()
 
 func _on_playback_started() -> void:
 	pass
 
 func _on_playback_stopped() -> void:
 	pass
+
+func _update_property_panel() -> void:
+	if property_panel == null:
+		return
+	if selected_notes.is_empty() and _selected_bpm_change_index < 0:
+		property_panel.show_metadata()
+	elif _selected_bpm_change_index >= 0:
+		var bpm_changes = chart_data.meta.get("bpm_changes", [])
+		if _selected_bpm_change_index < bpm_changes.size():
+			property_panel.show_bpm_change(bpm_changes[_selected_bpm_change_index], _selected_bpm_change_index)
+	else:
+		property_panel.show_selection(selected_notes)
 
 #endregion
 

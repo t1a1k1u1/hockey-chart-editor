@@ -1,5 +1,37 @@
 # Project Memory
 
+## Task 3: Note Editing + Undo/Redo
+
+### Signal access on typed Control references
+- `timeline` is declared as `Control` in ChartEditorMain, so signals defined in Timeline.gd are NOT visible at compile time. Use `timeline.connect("signal_name", callback)` with `has_signal()` guard instead of `timeline.signal_name.connect(callback)`.
+- Same pattern applies to any node whose script-defined signals aren't visible from the declared base type.
+
+### Callable callbacks for Timeline→ChartEditorMain delegation
+- Timeline needs to delegate actions (AddNote, DeleteNote, MoveNote) up to ChartEditorMain without importing it. Use `Callable` stored in `_action_callback` / `_move_action_callback` vars. ChartEditorMain calls `timeline.call("set_action_callback", callable)` to wire them.
+- This avoids circular dependencies and keeps Timeline decoupled from ChartEditorMain.
+
+### Variable re-declaration in same function scope
+- GDScript does not allow re-declaring a variable name in the same function even in a nested if block. In `_draw_notes()`, the `bpm_changes`/`grid_sec`/`grid_width` vars declared at the top of the function can be reused directly in the move-preview block — no re-declaration needed.
+
+### PropertyPanel signal guard (_building flag)
+- `_rebuild_ui()` creates SpinBoxes whose initial value triggers `value_changed` immediately. Use `_building: bool = true` during `_rebuild_ui()` and check `if _building: return` in all signal handlers to suppress false property_changed emissions during UI construction.
+
+### ChartEditorMain keyboard shortcuts
+- `KEY_S` shortcut for toggle_select_mode must be blocked when a text field (LineEdit/TextEdit/SpinBox) has focus; otherwise typing 's' in metadata fields triggers mode switch.
+- Check `get_viewport().gui_get_focus_owner()` before processing non-modifier key shortcuts.
+
+### DeleteNoteAction with multiple deletions
+- Deleting multiple selected notes requires processing in descending index order (sort then reverse) so earlier deletions don't shift subsequent indices.
+
+### BPM change dialog
+- Built programmatically in `_ready()` via `add_child()` — no scene file needed. SpinBox inside ConfirmationDialog works cleanly.
+
+### PropertyPanel `show_bpm_change` method
+- Added to PropertyPanel alongside `show_selection`/`show_metadata`. ChartEditorMain calls it on `_on_bpm_marker_clicked`.
+- `bpm_change_edited` signal carries `(change_index, field, value)` — ChartEditorMain handles this in `_on_bpm_change_edited()`.
+
+
+
 ## Task 2: Timeline + BPM Grid + Note Rendering
 
 ### TrackHeader vs Timeline vertical alignment
