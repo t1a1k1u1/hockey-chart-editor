@@ -1,5 +1,27 @@
 # Project Memory
 
+## Task 5: Presentation Video
+
+### Video capture on Windows
+- `godot --rendering-driver opengl3 --write-movie output.avi --fixed-fps 30 --quit-after 900 --script test/presentation.gd` works cleanly on Windows with NVIDIA GPU.
+- Output is MJPEG AVI; convert with `ffmpeg -c:v libx264 -pix_fmt yuv420p -crf 28 -preset slow -movflags +faststart`.
+- 900 frames at 30 FPS renders at ~428% realtime (7 seconds wall-clock). Output AVI ~75MB, MP4 ~420KB.
+- `quit()` in `_process()` exits cleanly after `--quit-after` fires; both are safe to use.
+
+### Programmatic note insertion in presentation script
+- `load("res://scripts/UndoRedoAction.gd").AddNoteAction.new(note_dict)` then `main_node.call("execute_action", action)` works from SceneTree scripts.
+- After `execute_action`, note count in `chart_data.notes` is immediately updated — no need to wait a frame.
+
+### Timeline scroll in presentation script
+- Direct assignment of `tl.scroll_offset = value` + `tl.queue_redraw()` works for smooth animated scrolling in `_process()`.
+- Sync HScrollBar via `set_block_signals(true)` / `value = x` / `set_block_signals(false)` to keep them in sync without signal loops.
+- `pixels_per_second` must be set on BOTH `_main_node.pixels_per_second` AND `_main_node.timeline.pixels_per_second` for zoom to take effect.
+
+### toggle_playback() needs audio_player not null
+- `toggle_playback()` in ChartEditorMain returns immediately if `audio_player` is null (no audio file loaded).
+- Sample chart `chart.json` has `meta.audio = "music.wav"` — audio is loaded automatically via `_try_load_audio()` after `_load_from_path()`.
+- In presentation script, playback call at frame 391 works reliably 330 frames after chart load.
+
 ## Task 4: Audio Playback + Playhead
 
 ### AudioStreamWAV.load_from_file() for absolute paths
