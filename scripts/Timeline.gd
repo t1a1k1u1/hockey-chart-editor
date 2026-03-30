@@ -903,6 +903,24 @@ func _complete_long_drag() -> void:
 	if t_end - t_start < min_len * 0.5:
 		return
 	var col = _long_drag_col
+
+	# If drag start coincides with a chain tail (last_long=false), attach long to chain
+	var chain_idx = _find_chain_at_tail(t_start, col)
+	if chain_idx >= 0:
+		var chain_note = chart_data.notes[chain_idx]
+		# Overlap check: [t_start, t_end] must be free (excluding the chain itself)
+		if col >= 3:
+			var lane = clamp(col - 3, 0, 6)
+			if _lane_occupied(lane, t_start, t_end, chain_idx):
+				return
+		var new_note = chain_note.duplicate(true)
+		new_note["last_long"] = true
+		new_note["last_end_time"] = t_end
+		var action_script = load("res://scripts/UndoRedoAction.gd")
+		_request_action(action_script.ReplaceNoteAction.new(chain_idx, chain_note, new_note))
+		return
+
+	# Normal long note placement
 	var note: Dictionary = {}
 	note["time"] = t_start
 	note["end_time"] = t_end
@@ -922,6 +940,24 @@ func _complete_long_drag() -> void:
 		if _lane_occupied(lane, t_start, t_end):
 			return
 	note_placed.emit(note)
+
+func _find_chain_at_tail(time: float, col: int) -> int:
+	## Find a chain in the same col whose last member time ≈ given time and last_long=false.
+	if chart_data == null:
+		return -1
+	var epsilon = 0.02
+	for i in range(chart_data.notes.size()):
+		var note = chart_data.notes[i]
+		if note.get("type", "") != "chain":
+			continue
+		if _note_to_col(note) != col:
+			continue
+		if note.get("last_long", false):
+			continue
+		var tail_time = note.get("time", 0.0) + (note.get("chain_count", 2) - 1) * note.get("chain_interval", 0.4)
+		if abs(tail_time - time) <= epsilon:
+			return i
+	return -1
 
 func _complete_note_move() -> void:
 	if chart_data == null or _note_move_index < 0 or _note_move_index >= chart_data.notes.size():
