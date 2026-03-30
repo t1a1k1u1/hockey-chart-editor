@@ -60,8 +60,8 @@ func _draw_long_note(canvas: CanvasItem, cx: float, y1: float, y2: float, color:
 	var start_y = maxf(y1, y2)   # bottom = start time (earlier)
 	var end_y = minf(y1, y2)     # top = end time (later)
 
-	# Band between start and end: narrow, faded color
-	var band_w = col_width * 0.4
+	# Band between start and end: same width as endpoints, faded color
+	var band_w = col_width * 0.8
 	var faded = Color(color.r, color.g, color.b, color.a * 0.35)
 	var band_rect = Rect2(cx - band_w * 0.5, end_y, band_w, start_y - end_y)
 	canvas.draw_rect(band_rect, faded)

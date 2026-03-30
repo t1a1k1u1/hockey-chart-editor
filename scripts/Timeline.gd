@@ -356,18 +356,23 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 func _draw_long_preview() -> void:
 	var cw = get_col_width()
 	var cx = CONTENT_OFFSET_X + _long_drag_col * cw + cw * 0.5
-	var y1 = time_to_y(_long_drag_start_time)
-	var y2 = time_to_y(_long_drag_end_time)
-	if y2 < y1:
-		var tmp = y1
-		y1 = y2
-		y2 = tmp
-	var bw = cw * 0.6
-	var rx = cx - bw * 0.5
-	var r = bw * 0.5
-	draw_rect(Rect2(rx, y1, bw, y2 - y1), COLOR_LONG_PREVIEW)
-	draw_circle(Vector2(cx, y1), r, COLOR_LONG_PREVIEW)
-	draw_circle(Vector2(cx, y2), r, COLOR_LONG_PREVIEW)
+	var start_y = time_to_y(_long_drag_start_time)
+	var end_y = time_to_y(_long_drag_end_time)
+	# start_y > end_y in flipped axis (start = bottom/early, end = top/late)
+	if end_y > start_y:
+		var tmp = start_y
+		start_y = end_y
+		end_y = tmp
+	# Grid sec for note height
+	var grid_sec = _grid_interval_at(_long_drag_start_time)
+	var note_h = max(grid_sec * pixels_per_second, 8.0)
+	var nw = cw * 0.8
+	# Band (full width, faded)
+	draw_rect(Rect2(cx - nw * 0.5, end_y, nw, start_y - end_y), COLOR_LONG_PREVIEW)
+	# Start cap (bottom)
+	draw_rect(Rect2(cx - nw * 0.5, start_y - note_h, nw, note_h), Color(COLOR_LONG_PREVIEW, 1.0))
+	# End cap (top)
+	draw_rect(Rect2(cx - nw * 0.5, end_y, nw, note_h), Color(COLOR_LONG_PREVIEW, 1.0))
 
 #endregion
 
