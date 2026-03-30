@@ -13,7 +13,6 @@ var is_dirty: bool = false
 var undo_stack: Array = []
 var redo_stack: Array = []
 var selected_notes: Array = []
-var current_note_type: String = "normal"
 var is_select_mode: bool = false
 var playhead_time: float = 0.0
 var snap_enabled: bool = true
@@ -48,17 +47,8 @@ var _file_dialog_mode: String = ""   # "open", "save_as"
 
 # BPM change being edited in PropertyPanel
 var _selected_bpm_change_index: int = -1
-var _root_vbox: Control = null
-
-func _process(_delta: float) -> void:
-	if _root_vbox:
-		var target = get_viewport().get_visible_rect().size
-		if _root_vbox.size != target:
-			_root_vbox.size = target
-			_root_vbox.position = Vector2.ZERO
-
 func _ready() -> void:
-	DisplayServer.window_set_min_size(Vector2i(1280, 720))
+
 	chart_data = load("res://scripts/ChartData.gd").new()
 
 	# Gather node references
@@ -88,11 +78,6 @@ func _ready() -> void:
 					snap_toggle.toggled.connect(_on_snap_toggled)
 				if snap_div_select:
 					snap_div_select.item_selected.connect(_on_snap_div_selected)
-				# Note type buttons
-				for idx in range(7):
-					var btn = ctrl_bar.get_node_or_null("NoteType%d" % (idx + 1))
-					if btn:
-						btn.pressed.connect(_on_note_type_pressed.bind(idx))
 
 		var main_area = vbox.get_node_or_null("MainArea")
 		if main_area:
@@ -170,9 +155,6 @@ func _ready() -> void:
 	# Connect window close request
 	get_tree().get_root().close_requested.connect(_on_window_close_requested)
 
-	# Window resize: sync RootVBox every frame (anchor-based resize doesn't work with Node root)
-	_root_vbox = vbox
-
 	# Wire up Timeline signals and callbacks (use dynamic connect since timeline is typed Control)
 	if timeline:
 		if timeline.has_signal("note_placed"):
@@ -198,7 +180,6 @@ func _ready() -> void:
 			property_panel.bpm_change_edited.connect(_on_bpm_change_edited)
 
 	_new_chart()
-	_update_note_type_buttons()
 
 func _build_bpm_change_dialog() -> void:
 	bpm_change_dialog = ConfirmationDialog.new()
@@ -361,16 +342,6 @@ func _update_status() -> void:
 		var path_str = current_file_path if current_file_path != "" else "(unsaved)"
 		status_label.text = "Notes: %d  |  %s" % [note_count, path_str]
 
-func _update_note_type_buttons() -> void:
-	var note_type_names = ["normal", "top", "vertical", "long_normal", "long_top", "long_vertical", "chain"]
-	var ctrl_bar_node = get_node_or_null("RootVBox/ControlBarPanel/ControlBar")
-	if ctrl_bar_node == null:
-		return
-	for idx in range(7):
-		var btn = ctrl_bar_node.get_node_or_null("NoteType%d" % (idx + 1))
-		if btn:
-			btn.button_pressed = (note_type_names[idx] == current_note_type)
-
 #endregion
 
 #region Signal handlers — menu
@@ -418,13 +389,7 @@ func _on_snap_div_selected(index: int) -> void:
 	snap_division = snap_vals[index]
 	if timeline:
 		timeline.snap_division = snap_division
-
-func _on_note_type_pressed(idx: int) -> void:
-	var note_type_names = ["normal", "top", "vertical", "long_normal", "long_top", "long_vertical", "chain"]
-	current_note_type = note_type_names[idx]
-	if timeline:
-		timeline.current_note_type = current_note_type
-	_update_note_type_buttons()
+		timeline.queue_redraw()  # Bug 3 fix: update grid immediately on snap change
 
 func _on_play_button_pressed() -> void:
 	toggle_playback()
@@ -850,9 +815,6 @@ func _input(event: InputEvent) -> void:
 	elif ctrl and kc == KEY_B:
 		add_bpm_change_at_playhead()
 		get_viewport().set_input_as_handled()
-	elif kc >= KEY_1 and kc <= KEY_7 and not ctrl:
-		set_note_type(kc - KEY_1)
-		get_viewport().set_input_as_handled()
 	elif kc == KEY_S and not ctrl:
 		toggle_select_mode()
 		get_viewport().set_input_as_handled()
@@ -883,14 +845,6 @@ func _input(event: InputEvent) -> void:
 		var step = _get_measure_duration() if shift else _get_grid_interval()
 		set_playhead_time(playhead_time + step)
 		get_viewport().set_input_as_handled()
-
-func set_note_type(idx: int) -> void:
-	var note_type_names = ["normal", "top", "vertical", "long_normal", "long_top", "long_vertical", "chain"]
-	if idx >= 0 and idx < note_type_names.size():
-		current_note_type = note_type_names[idx]
-		if timeline:
-			timeline.current_note_type = current_note_type
-		_update_note_type_buttons()
 
 func toggle_select_mode() -> void:
 	is_select_mode = not is_select_mode

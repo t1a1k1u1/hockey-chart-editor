@@ -103,18 +103,12 @@ func _initialize() -> void:
 
 	ctrl_bar.add_child(VSeparator.new())
 
-	var note_type_label = Label.new()
-	note_type_label.text = "Type:"
-	ctrl_bar.add_child(note_type_label)
-
-	var note_types = [["N", "normal"], ["T", "top"], ["V", "vertical"], ["LN", "long_normal"], ["LT", "long_top"], ["LV", "long_vertical"], ["CH", "chain"]]
-	for i in range(note_types.size()):
-		var btn = Button.new()
-		btn.name = "NoteType%d" % (i + 1)
-		btn.text = note_types[i][0]
-		btn.tooltip_text = note_types[i][1]
-		btn.toggle_mode = true
-		ctrl_bar.add_child(btn)
+	var hint_label = Label.new()
+	hint_label.name = "HintLabel"
+	hint_label.text = "click=N/T  v=V  x=Long  c=Chain  v+x=LV  v+c=CV"
+	hint_label.add_theme_font_size_override("font_size", 11)
+	hint_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55, 1.0))
+	ctrl_bar.add_child(hint_label)
 
 	ctrl_bar.add_child(VSeparator.new())
 

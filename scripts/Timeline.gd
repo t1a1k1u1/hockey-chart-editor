@@ -38,7 +38,6 @@ var note_renderer = null
 
 var snap_enabled: bool = true
 var snap_division: int = 4
-var current_note_type: String = "normal"
 var is_select_mode: bool = false
 var selected_notes: Array = []
 
@@ -52,6 +51,7 @@ var _long_drag_active: bool = false
 var _long_drag_start_time: float = 0.0
 var _long_drag_end_time: float = 0.0
 var _long_drag_col: int = 0
+var _long_drag_note_type: String = ""
 
 # Note move drag state
 var _note_move_active: bool = false
@@ -610,12 +610,13 @@ func _place_note_at(pos: Vector2) -> void:
 	if note_data.is_empty():
 		return
 
-	var note_type = current_note_type
+	var note_type = note_data.get("type", "normal")
 	if note_type in ["long_normal", "long_top", "long_vertical"]:
 		_long_drag_active = true
 		_long_drag_start_time = snapped_time
 		_long_drag_end_time = snapped_time + _grid_interval_at(snapped_time)
 		_long_drag_col = col
+		_long_drag_note_type = note_type
 		queue_redraw()
 	else:
 		# Bug 2 fix: skip placement if a note with same type/column/time already exists
@@ -697,57 +698,59 @@ func _build_note_data(time: float, col: int) -> Dictionary:
 	var note: Dictionary = {}
 	note["time"] = time
 
-	match current_note_type:
-		"normal":
-			if col < 3 or col > 9:
-				return {}
-			note["type"] = "normal"
-			note["lane"] = col - 3
-		"top":
-			if col > 2:
-				return {}
-			note["type"] = "top"
-			note["top_lane"] = col
-		"vertical":
-			if col < 3 or col > 9:
-				return {}
-			note["type"] = "vertical"
-			note["lane"] = col - 3
-		"long_normal":
-			if col < 3 or col > 9:
-				return {}
-			note["type"] = "long_normal"
-			note["lane"] = col - 3
-			note["end_time"] = time + _grid_interval_at(time)
-		"long_top":
-			if col > 2:
-				return {}
+	# Determine note type from held keys
+	var v_held = Input.is_key_pressed(KEY_V) and not Input.is_key_pressed(KEY_CTRL)
+	var x_held = Input.is_key_pressed(KEY_X)
+	var c_held = Input.is_key_pressed(KEY_C) and not Input.is_key_pressed(KEY_CTRL)
+
+	if col <= 2:
+		# Top lane
+		if x_held:
 			note["type"] = "long_top"
 			note["top_lane"] = col
 			note["end_time"] = time + _grid_interval_at(time)
-		"long_vertical":
-			if col < 3 or col > 9:
-				return {}
-			note["type"] = "long_vertical"
-			note["lane"] = col - 3
-			note["end_time"] = time + _grid_interval_at(time)
-		"chain":
-			var chain_type = "normal"
-			if col <= 2:
-				chain_type = "top"
-			elif col >= 3:
-				chain_type = "normal"  # default shared lane; user may choose vertical type via type button
+		elif c_held:
 			note["type"] = "chain"
-			note["chain_type"] = chain_type
-			if col <= 2:
-				note["top_lane"] = col
-			else:
-				note["lane"] = col - 3
+			note["chain_type"] = "top"
+			note["top_lane"] = col
 			note["chain_count"] = 2
 			note["chain_interval"] = _grid_interval_at(time) * 2.0
 			note["last_long"] = false
-		_:
-			return {}
+		else:
+			# v_held or no modifier → top note
+			note["type"] = "top"
+			note["top_lane"] = col
+	else:
+		# Shared lane (col 3-9 → lane 0-6)
+		var lane = col - 3
+		if v_held and x_held:
+			note["type"] = "long_vertical"
+			note["lane"] = lane
+			note["end_time"] = time + _grid_interval_at(time)
+		elif v_held and c_held:
+			note["type"] = "chain"
+			note["chain_type"] = "vertical"
+			note["lane"] = lane
+			note["chain_count"] = 2
+			note["chain_interval"] = _grid_interval_at(time) * 2.0
+			note["last_long"] = false
+		elif v_held:
+			note["type"] = "vertical"
+			note["lane"] = lane
+		elif x_held:
+			note["type"] = "long_normal"
+			note["lane"] = lane
+			note["end_time"] = time + _grid_interval_at(time)
+		elif c_held:
+			note["type"] = "chain"
+			note["chain_type"] = "normal"
+			note["lane"] = lane
+			note["chain_count"] = 2
+			note["chain_interval"] = _grid_interval_at(time) * 2.0
+			note["last_long"] = false
+		else:
+			note["type"] = "normal"
+			note["lane"] = lane
 
 	return note
 
@@ -839,7 +842,7 @@ func _complete_long_drag() -> void:
 	var note: Dictionary = {}
 	note["time"] = t_start
 	note["end_time"] = t_end
-	match current_note_type:
+	match _long_drag_note_type:
 		"long_normal":
 			note["type"] = "long_normal"
 			note["lane"] = clamp(col - 3, 0, 6)
