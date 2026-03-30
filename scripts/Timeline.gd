@@ -606,6 +606,12 @@ func _place_note_at(pos: Vector2) -> void:
 	var snapped_time = _snap_time(clicked_time)
 	var col = x_to_col(pos.x)
 
+	# Chain click: special behavior
+	var c_held = Input.is_key_pressed(KEY_C) and not Input.is_key_pressed(KEY_CTRL)
+	if c_held:
+		_handle_chain_click(snapped_time, col)
+		return
+
 	var note_data = _build_note_data(snapped_time, col)
 	if note_data.is_empty():
 		return
@@ -622,6 +628,59 @@ func _place_note_at(pos: Vector2) -> void:
 		# Bug 2 fix: skip placement if a note with same type/column/time already exists
 		if not _note_exists_at(note_data, snapped_time):
 			note_placed.emit(note_data)
+
+func _handle_chain_click(snapped_time: float, col: int) -> void:
+	## Find the closest note in the same col with time < snapped_time.
+	if chart_data == null:
+		return
+	var prev_index = -1
+	var prev_time = -INF
+	for i in range(chart_data.notes.size()):
+		var note = chart_data.notes[i]
+		if _note_to_col(note) != col:
+			continue
+		var nt = note.get("time", 0.0)
+		if nt < snapped_time and nt > prev_time:
+			prev_time = nt
+			prev_index = i
+	if prev_index < 0:
+		return  # No previous note — do nothing
+
+	var prev_note = chart_data.notes[prev_index]
+	var prev_type = prev_note.get("type", "normal")
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+
+	if prev_type in ["normal", "vertical", "top"]:
+		# Convert to chain
+		var interval = snapped_time - prev_note.get("time", 0.0)
+		if interval <= 0.0:
+			return
+		var chain_type: String
+		match prev_type:
+			"top": chain_type = "top"
+			"vertical": chain_type = "vertical"
+			_: chain_type = "normal"
+		var new_chain = {
+			"type": "chain",
+			"time": prev_note.get("time", 0.0),
+			"chain_type": chain_type,
+			"chain_count": 2,
+			"chain_interval": interval,
+			"last_long": false
+		}
+		if chain_type == "top":
+			new_chain["top_lane"] = prev_note.get("top_lane", 0)
+		else:
+			new_chain["lane"] = prev_note.get("lane", 0)
+		var action = action_script.ReplaceNoteAction.new(prev_index, prev_note, new_chain)
+		_request_action(action)
+
+	elif prev_type == "chain" and not prev_note.get("last_long", false):
+		# Extend chain by 1
+		var old_count = prev_note.get("chain_count", 2)
+		var action = action_script.EditPropertyAction.new(prev_index, "chain_count", old_count, old_count + 1)
+		_request_action(action)
+	# else: long note, or chain+last_long=true — do nothing
 
 func _note_exists_at(note_data: Dictionary, snapped_time: float) -> bool:
 	## Returns true if the new note_data would overlap an existing note.

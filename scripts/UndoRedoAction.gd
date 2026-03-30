@@ -187,3 +187,24 @@ class MoveBpmChangeAction extends RefCounted:
 		var changes = chart_data.meta.get("bpm_changes", [])
 		if _index >= 0 and _index < changes.size():
 			changes[_index]["time"] = _old_time
+
+# ---------------------------------------------------------------------------
+# ReplaceNoteAction
+# ---------------------------------------------------------------------------
+class ReplaceNoteAction extends RefCounted:
+	var _index: int
+	var _old_note: Dictionary
+	var _new_note: Dictionary
+
+	func _init(index: int, old_note: Dictionary, new_note: Dictionary) -> void:
+		_index = index
+		_old_note = old_note.duplicate(true)
+		_new_note = new_note.duplicate(true)
+
+	func execute(chart_data) -> void:
+		if _index >= 0 and _index < chart_data.notes.size():
+			chart_data.notes[_index] = _new_note.duplicate(true)
+
+	func undo(chart_data) -> void:
+		if _index >= 0 and _index < chart_data.notes.size():
+			chart_data.notes[_index] = _old_note.duplicate(true)
