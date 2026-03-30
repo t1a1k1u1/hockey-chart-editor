@@ -41,7 +41,7 @@ func draw_note(canvas: CanvasItem, note: Dictionary, scroll_offset: float, pixel
 			_draw_normal_note(canvas, cx, center_y, color, is_selected, col_width, fixed_grid_sec, pixels_per_second)
 		"long_normal", "long_top", "long_vertical":
 			var y2 = h - (note.get("end_time", note["time"] + 0.5) - scroll_offset) * pixels_per_second
-			_draw_long_note(canvas, cx, center_y, y2, color, is_selected, col_width)
+			_draw_long_note(canvas, cx, center_y, y2, color, is_selected, col_width, fixed_grid_sec, pixels_per_second)
 		"chain":
 			_draw_chain_note(canvas, note, scroll_offset, pixels_per_second, cx, color, is_selected, col_width, fixed_grid_sec, h)
 
@@ -53,22 +53,35 @@ func _draw_normal_note(canvas: CanvasItem, cx: float, cy: float, color: Color, i
 	if is_selected:
 		canvas.draw_rect(rect, COLOR_SELECTED, false, 2.0)
 
-func _draw_long_note(canvas: CanvasItem, cx: float, y1: float, y2: float, color: Color, is_selected: bool, col_width: float) -> void:
-	var w = col_width * 0.6
-	var rx = cx - w * 0.5
-	var r = w * 0.5
-	# Ensure y1 <= y2
-	if y2 < y1:
-		var tmp = y1
-		y1 = y2
-		y2 = tmp
-	var rect = Rect2(rx, y1, w, y2 - y1)
-	canvas.draw_rect(rect, color)
-	# Rounded caps (horizontal semi-circles at top and bottom)
-	canvas.draw_circle(Vector2(cx, y1), r, color)
-	canvas.draw_circle(Vector2(cx, y2), r, color)
+func _draw_long_note(canvas: CanvasItem, cx: float, y1: float, y2: float, color: Color, is_selected: bool, col_width: float, grid_sec: float = 0.0, pixels_per_second: float = 200.0) -> void:
+	# Ensure y1 < y2 (y1=top=later time, y2=bottom=earlier time in flipped axis)
+	# start note is at bottom (larger y), end note at top (smaller y)
+	# So: start_y = max(y1, y2), end_y = min(y1, y2)
+	var start_y = maxf(y1, y2)   # bottom = start time (earlier)
+	var end_y = minf(y1, y2)     # top = end time (later)
+
+	# Band between start and end: narrow, faded color
+	var band_w = col_width * 0.4
+	var faded = Color(color.r, color.g, color.b, color.a * 0.35)
+	var band_rect = Rect2(cx - band_w * 0.5, end_y, band_w, start_y - end_y)
+	canvas.draw_rect(band_rect, faded)
+
+	# Note height for endpoints (same as _draw_normal_note)
+	var note_h = maxf(grid_sec * pixels_per_second, 8.0) if grid_sec > 0.0 else 8.0
+	var note_w = col_width * 0.8
+
+	# Start note (bottom = early time): rect from start_y-note_h to start_y
+	var start_rect = Rect2(cx - note_w * 0.5, start_y - note_h, note_w, note_h)
+	canvas.draw_rect(start_rect, color)
+
+	# End note (top = late time): rect from end_y to end_y+note_h
+	var end_rect = Rect2(cx - note_w * 0.5, end_y, note_w, note_h)
+	canvas.draw_rect(end_rect, color)
+
 	if is_selected:
-		canvas.draw_rect(rect, COLOR_SELECTED, false, 2.0)
+		canvas.draw_rect(band_rect, COLOR_SELECTED, false, 2.0)
+		canvas.draw_rect(start_rect, COLOR_SELECTED, false, 2.0)
+		canvas.draw_rect(end_rect, COLOR_SELECTED, false, 2.0)
 
 func _draw_chain_note(canvas: CanvasItem, note: Dictionary, scroll_offset: float, pixels_per_second: float, cx: float, color: Color, is_selected: bool, col_width: float, grid_sec: float, canvas_height: float) -> void:
 	var count = note.get("chain_count", 2)
@@ -86,7 +99,7 @@ func _draw_chain_note(canvas: CanvasItem, note: Dictionary, scroll_offset: float
 		# Draw the note (last may be long)
 		if i == count - 1 and last_long and last_end_time > t_i:
 			var y2 = canvas_height - (last_end_time - scroll_offset) * pixels_per_second
-			_draw_long_note(canvas, cx, yi, y2, color, is_selected, col_width)
+			_draw_long_note(canvas, cx, yi, y2, color, is_selected, col_width, grid_sec, pixels_per_second)
 		else:
 			_draw_normal_note(canvas, cx, yi, color, is_selected, col_width, grid_sec, pixels_per_second)
 		prev_y = yi
