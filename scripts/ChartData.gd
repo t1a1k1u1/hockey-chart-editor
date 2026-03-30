@@ -60,21 +60,21 @@ func bpm_at(time: float) -> float:
 	return current_bpm
 
 func get_note_row(note: Dictionary) -> int:
-	## Returns the track row index (0-10) for a given note.
+	## Returns the track row index (0-9) for a given note.
+	## col 0-2: TOP (top_lane=0,1,2)
+	## col 3-9: Shared lanes 0-6 (note.lane = col - 3)
 	var t = note.get("type", "normal")
 	var ct = note.get("chain_type", "normal")
 	if t == "top" or t == "long_top" or (t == "chain" and ct == "top"):
 		return note.get("top_lane", 0)
 	elif t == "normal" or t == "long_normal" or (t == "chain" and ct == "normal"):
-		return 3
+		return 3 + note.get("lane", 0)
 	elif t == "vertical" or t == "long_vertical" or (t == "chain" and ct == "vertical"):
-		return 4 + note.get("lane", 0)
+		return 3 + note.get("lane", 0)
 	return 3
 
 func get_row_type(row: int) -> String:
 	if row <= 2:
 		return "top"
-	elif row == 3:
-		return "normal"
 	else:
-		return "vertical"
+		return "shared"

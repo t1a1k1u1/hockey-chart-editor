@@ -151,30 +151,35 @@
 - ChartEditor:AudioStreamPlayer.playback_started -> ChartEditorMain._on_playback_started
 - ChartEditor:AudioStreamPlayer.playback_stopped -> ChartEditorMain._on_playback_stopped
 
-## Track Row Layout
+## Track Column Layout (NUM_COLS = 10)
 
-Row index -> track type mapping (used by Timeline.gd and TrackHeader):
+Column index -> track type mapping (used by Timeline.gd, ChartData.gd, NoteRenderer.gd):
 
-| Row | Label | Type | Sub-index |
-|-----|-------|------|-----------|
+| Col | Label | Type | Note Field |
+|-----|-------|------|------------|
 | 0 | TOP 0 | top/long_top/chain(top) | top_lane=0 |
-| sep | — | separator 4px | — |
 | 1 | TOP 1 | top/long_top/chain(top) | top_lane=1 |
-| sep | — | separator 4px | — |
 | 2 | TOP 2 | top/long_top/chain(top) | top_lane=2 |
-| sep | — | separator 4px | — |
-| 3 | NORMAL | normal/long_normal/chain(normal) | — |
-| sep | — | separator 4px | — |
-| 4 | V 0 | vertical/long_vertical/chain(vertical) | lane=0 |
-| 5 | V 1 | vertical/long_vertical/chain(vertical) | lane=1 |
-| 6 | V 2 | vertical/long_vertical/chain(vertical) | lane=2 |
-| 7 | V 3 | vertical/long_vertical/chain(vertical) | lane=3 |
-| 8 | V 4 | vertical/long_vertical/chain(vertical) | lane=4 |
-| 9 | V 5 | vertical/long_vertical/chain(vertical) | lane=5 |
-| 10 | V 6 | vertical/long_vertical/chain(vertical) | lane=6 |
+| 3 | L 0 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=0 |
+| 4 | L 1 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=1 |
+| 5 | L 2 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=2 |
+| 6 | L 3 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=3 |
+| 7 | L 4 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=4 |
+| 8 | L 5 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=5 |
+| 9 | L 6 | normal/long_normal/vertical/long_vertical/chain (shared) | lane=6 |
 
-Row height: 32px. Separator height: 4px.
-Total height: 11 * 32 + 4 * 4 = 352 + 16 = 368px (4 separators: TOP0/TOP1, TOP1/TOP2, TOP2/NORMAL, NORMAL/V0)
+Column mapping formula:
+- TOP notes: col = top_lane (0..2)
+- All other notes (normal/long_normal/vertical/long_vertical/chain(non-top)): col = 3 + lane (3..9)
+
+Separator drawing:
+- Major separator between col 2 and col 3 (TOP / shared lanes boundary)
+- Minor separators between all other adjacent columns
+
+Background colors:
+- col 0-2: COLOR_BG_TOP (#3A2200 orange)
+- col 3,5,7,9 (even lane index): COLOR_BG_NORMAL (#001A3A blue)
+- col 4,6,8 (odd lane index): COLOR_BG_VERTICAL (#001228 dark blue)
 
 ## Note Color Constants
 

@@ -12,7 +12,7 @@ const BPM_BAND_WIDTH = 16.0       # BPM change band width (px)
 const TRACK_HEADER_HEIGHT = 24.0  # Top track header height (px)
 const CONTENT_OFFSET_X = RULER_WIDTH + BPM_BAND_WIDTH  # 76px
 const DEFAULT_PPS = 200.0         # pixels per second (vertical)
-const NUM_COLS = 11               # columns: TOP0,TOP1,TOP2,NORMAL,V0..V6
+const NUM_COLS = 10               # columns: TOP0,TOP1,TOP2,L0..L6
 
 # Track column colors
 const COLOR_BG_TOP = Color(0.227, 0.133, 0.0)       # #3A2200 orange
@@ -85,6 +85,8 @@ func _ready() -> void:
 		vscrollbar = parent.get_node_or_null("VScrollBar")
 		if vscrollbar:
 			vscrollbar.value_changed.connect(_on_vscroll_changed)
+	# Update scrollbar page whenever Timeline is resized (e.g. window resize)
+	resized.connect(_update_vscroll)
 
 #region Coordinate Transforms
 
@@ -114,9 +116,9 @@ func _note_to_col(note: Dictionary) -> int:
 	if t == "top" or t == "long_top" or (t == "chain" and ct == "top"):
 		return note.get("top_lane", 0)  # 0,1,2
 	elif t == "normal" or t == "long_normal" or (t == "chain" and ct == "normal"):
-		return 3
+		return 3 + note.get("lane", 0)  # 3..9 shared lanes
 	elif t == "vertical" or t == "long_vertical" or (t == "chain" and ct == "vertical"):
-		return 4 + note.get("lane", 0)  # 4..10
+		return 3 + note.get("lane", 0)  # 3..9 shared lanes
 	return 3
 
 #endregion
@@ -184,15 +186,16 @@ func _draw_col_backgrounds(h: float) -> void:
 		var color: Color
 		if col <= 2:
 			color = COLOR_BG_TOP
-		elif col == 3:
-			color = COLOR_BG_NORMAL
 		else:
-			color = COLOR_BG_VERTICAL
+			# Shared lanes: alternate even=NORMAL, odd=VERTICAL for visual separation
+			var lane = col - 3
+			color = COLOR_BG_NORMAL if (lane % 2 == 0) else COLOR_BG_VERTICAL
 		draw_rect(Rect2(cx, TRACK_HEADER_HEIGHT, cw, h - TRACK_HEADER_HEIGHT), color)
 		# Draw thin separator line between columns
 		if col > 0:
-			var sep_color = COLOR_SEP_MAJOR if (col == 3 or col == 4) else COLOR_SEP_MINOR
-			var sep_w = 2.0 if (col == 3 or col == 4) else 1.0
+			# Major separator only between col 2 and col 3 (TOP / shared lanes boundary)
+			var sep_color = COLOR_SEP_MAJOR if col == 3 else COLOR_SEP_MINOR
+			var sep_w = 2.0 if col == 3 else 1.0
 			draw_line(Vector2(cx, TRACK_HEADER_HEIGHT), Vector2(cx, h), sep_color, sep_w)
 
 func _draw_track_header(w: float) -> void:
@@ -201,7 +204,7 @@ func _draw_track_header(w: float) -> void:
 	# Ruler / BPM band area in header
 	draw_rect(Rect2(0, 0, CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT), Color(0.05, 0.05, 0.07, 1.0))
 	var cw = get_col_width()
-	var col_labels = ["TOP 0", "TOP 1", "TOP 2", "NORMAL", "V 0", "V 1", "V 2", "V 3", "V 4", "V 5", "V 6"]
+	var col_labels = ["TOP 0", "TOP 1", "TOP 2", "L 0", "L 1", "L 2", "L 3", "L 4", "L 5", "L 6"]
 	for col in range(NUM_COLS):
 		var cx = CONTENT_OFFSET_X + col * cw
 		var cx_mid = cx + cw * 0.5
@@ -209,10 +212,9 @@ func _draw_track_header(w: float) -> void:
 		var color: Color
 		if col <= 2:
 			color = Color(0.3, 0.18, 0.0, 1.0)
-		elif col == 3:
-			color = Color(0.0, 0.14, 0.3, 1.0)
 		else:
-			color = Color(0.0, 0.1, 0.2, 1.0)
+			var lane = col - 3
+			color = Color(0.0, 0.14, 0.3, 1.0) if (lane % 2 == 0) else Color(0.0, 0.1, 0.2, 1.0)
 		draw_rect(Rect2(cx, 0, cw, TRACK_HEADER_HEIGHT), color)
 		# Label
 		var label = col_labels[col]
@@ -314,7 +316,8 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 		return
 	var bpm_changes = chart_data.meta.get("bpm_changes", [])
 	var center_time = scroll_offset + (size.y - TRACK_HEADER_HEIGHT) * 0.5 / pixels_per_second
-	var grid_sec = bpm_grid.grid_interval(center_time, bpm_changes, snap_division)
+	# Bug 4 fix: use fixed snap=8 for note height so it doesn't change with snap_division
+	var fixed_grid_sec = bpm_grid.grid_interval(center_time, bpm_changes, 8)
 
 	for i in range(chart_data.notes.size()):
 		var note = chart_data.notes[i]
@@ -325,7 +328,8 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 		if note_end_time < start_time - 1.0 or note_time > end_time + 1.0:
 			continue
 		var is_selected = selected_notes.has(i)
-		note_renderer.draw_note(self, note, scroll_offset, pixels_per_second, is_selected, grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT)
+		# Bug 1 fix: pass size.y as canvas_height so NoteRenderer uses correct flipped Y
+		note_renderer.draw_note(self, note, scroll_offset, pixels_per_second, is_selected, fixed_grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT, size.y)
 
 	# Draw move preview
 	if _note_move_active and _note_move_index >= 0 and _note_move_index < chart_data.notes.size():
@@ -339,15 +343,15 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 		var nt = preview_note.get("type", "normal")
 		if nt == "top" or nt == "long_top":
 			preview_note["top_lane"] = clamp(pc, 0, 2)
-		elif nt == "vertical" or nt == "long_vertical":
-			preview_note["lane"] = clamp(pc - 4, 0, 6)
+		elif nt in ["normal", "long_normal", "vertical", "long_vertical"]:
+			preview_note["lane"] = clamp(pc - 3, 0, 6)
 		elif nt == "chain":
 			var ct = preview_note.get("chain_type", "normal")
 			if ct == "top":
 				preview_note["top_lane"] = clamp(pc, 0, 2)
-			elif ct == "vertical":
-				preview_note["lane"] = clamp(pc - 4, 0, 6)
-		note_renderer.draw_note(self, preview_note, scroll_offset, pixels_per_second, true, grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT)
+			else:
+				preview_note["lane"] = clamp(pc - 3, 0, 6)
+		note_renderer.draw_note(self, preview_note, scroll_offset, pixels_per_second, true, fixed_grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT, size.y)
 
 func _draw_long_preview() -> void:
 	var cw = get_col_width()
@@ -460,18 +464,14 @@ func _constrain_col_for_note(note: Dictionary, new_col: int) -> int:
 	var note_type = note.get("type", "normal")
 	if note_type in ["top", "long_top"]:
 		return clamp(new_col, 0, 2)
-	elif note_type in ["normal", "long_normal"]:
-		return 3
-	elif note_type in ["vertical", "long_vertical"]:
-		return clamp(new_col, 4, 10)
+	elif note_type in ["normal", "long_normal", "vertical", "long_vertical"]:
+		return clamp(new_col, 3, 9)
 	elif note_type == "chain":
 		var ct = note.get("chain_type", "normal")
 		if ct == "top":
 			return clamp(new_col, 0, 2)
-		elif ct == "normal":
-			return 3
 		else:
-			return clamp(new_col, 4, 10)
+			return clamp(new_col, 3, 9)
 	return new_col
 
 func _gui_input(event: InputEvent) -> void:
@@ -618,7 +618,80 @@ func _place_note_at(pos: Vector2) -> void:
 		_long_drag_col = col
 		queue_redraw()
 	else:
-		note_placed.emit(note_data)
+		# Bug 2 fix: skip placement if a note with same type/column/time already exists
+		if not _note_exists_at(note_data, snapped_time):
+			note_placed.emit(note_data)
+
+func _note_exists_at(note_data: Dictionary, snapped_time: float) -> bool:
+	## Returns true if the new note_data would overlap an existing note.
+	if chart_data == null:
+		return false
+	var new_col = _note_to_col(note_data)
+	# Top notes only check for exact column+time collision
+	if new_col <= 2:
+		var half_epsilon = _grid_interval_at(snapped_time) * 0.5
+		for existing in chart_data.notes:
+			if _note_to_col(existing) != new_col:
+				continue
+			if abs(existing.get("time", -1.0) - snapped_time) < half_epsilon:
+				return true
+		return false
+	# Shared lane notes: use full overlap detection
+	var lane = new_col - 3
+	var note_type = note_data.get("type", "normal")
+	var t_end: float
+	if note_type in ["long_normal", "long_top", "long_vertical"]:
+		t_end = note_data.get("end_time", snapped_time + _grid_interval_at(snapped_time))
+	elif note_type == "chain":
+		var count = note_data.get("chain_count", 2)
+		var interval = note_data.get("chain_interval", 0.4)
+		var chain_end = snapped_time + (count - 1) * interval
+		if note_data.get("last_long", false):
+			chain_end += note_data.get("last_end_time", chain_end) - chain_end
+		t_end = chain_end
+	else:
+		t_end = snapped_time
+	return _lane_occupied(lane, snapped_time, t_end)
+
+func _build_col_from_note(note_data: Dictionary) -> int:
+	return _note_to_col(note_data)
+
+func _lane_occupied(lane: int, start_t: float, end_t: float, exclude_index: int = -1) -> bool:
+	## Returns true if [start_t, end_t] overlaps any existing note in the given shared lane.
+	if chart_data == null:
+		return false
+	var epsilon = 0.01
+	for i in range(chart_data.notes.size()):
+		if i == exclude_index:
+			continue
+		var note = chart_data.notes[i]
+		var note_col = _note_to_col(note)
+		# Skip top-lane notes (cols 0-2)
+		if note_col < 3:
+			continue
+		var note_lane = note_col - 3
+		if note_lane != lane:
+			continue
+		# Compute note's occupied interval
+		var nt = note.get("time", 0.0)
+		var note_end: float
+		var note_type = note.get("type", "normal")
+		if note_type in ["long_normal", "long_top", "long_vertical"]:
+			note_end = note.get("end_time", nt)
+		elif note_type == "chain":
+			var count = note.get("chain_count", 2)
+			var interval = note.get("chain_interval", 0.4)
+			note_end = nt + (count - 1) * interval
+			if note.get("last_long", false) and note.get("last_end_time", 0.0) > note_end:
+				note_end = note.get("last_end_time", note_end)
+		else:
+			note_end = nt  # single note = point
+		# Overlap check: [start_t, end_t] overlaps [nt, note_end]?
+		# They don't overlap if end_t < nt - epsilon or start_t > note_end + epsilon
+		if end_t < nt - epsilon or start_t > note_end + epsilon:
+			continue
+		return true
+	return false
 
 func _build_note_data(time: float, col: int) -> Dictionary:
 	var note: Dictionary = {}
@@ -626,23 +699,25 @@ func _build_note_data(time: float, col: int) -> Dictionary:
 
 	match current_note_type:
 		"normal":
-			if col != 3:
+			if col < 3 or col > 9:
 				return {}
 			note["type"] = "normal"
+			note["lane"] = col - 3
 		"top":
 			if col > 2:
 				return {}
 			note["type"] = "top"
 			note["top_lane"] = col
 		"vertical":
-			if col < 4:
+			if col < 3 or col > 9:
 				return {}
 			note["type"] = "vertical"
-			note["lane"] = col - 4
+			note["lane"] = col - 3
 		"long_normal":
-			if col != 3:
+			if col < 3 or col > 9:
 				return {}
 			note["type"] = "long_normal"
+			note["lane"] = col - 3
 			note["end_time"] = time + _grid_interval_at(time)
 		"long_top":
 			if col > 2:
@@ -651,23 +726,23 @@ func _build_note_data(time: float, col: int) -> Dictionary:
 			note["top_lane"] = col
 			note["end_time"] = time + _grid_interval_at(time)
 		"long_vertical":
-			if col < 4:
+			if col < 3 or col > 9:
 				return {}
 			note["type"] = "long_vertical"
-			note["lane"] = col - 4
+			note["lane"] = col - 3
 			note["end_time"] = time + _grid_interval_at(time)
 		"chain":
 			var chain_type = "normal"
 			if col <= 2:
 				chain_type = "top"
-			elif col >= 4:
-				chain_type = "vertical"
+			elif col >= 3:
+				chain_type = "normal"  # default shared lane; user may choose vertical type via type button
 			note["type"] = "chain"
 			note["chain_type"] = chain_type
 			if col <= 2:
 				note["top_lane"] = col
-			elif col >= 4:
-				note["lane"] = col - 4
+			else:
+				note["lane"] = col - 3
 			note["chain_count"] = 2
 			note["chain_interval"] = _grid_interval_at(time) * 2.0
 			note["last_long"] = false
@@ -767,12 +842,18 @@ func _complete_long_drag() -> void:
 	match current_note_type:
 		"long_normal":
 			note["type"] = "long_normal"
+			note["lane"] = clamp(col - 3, 0, 6)
 		"long_top":
 			note["type"] = "long_top"
 			note["top_lane"] = clamp(col, 0, 2)
 		"long_vertical":
 			note["type"] = "long_vertical"
-			note["lane"] = clamp(col - 4, 0, 6)
+			note["lane"] = clamp(col - 3, 0, 6)
+	# Overlap check for shared-lane long notes
+	if col >= 3:
+		var lane = clamp(col - 3, 0, 6)
+		if _lane_occupied(lane, t_start, t_end):
+			return
 	note_placed.emit(note)
 
 func _complete_note_move() -> void:
@@ -789,18 +870,39 @@ func _complete_note_move() -> void:
 	var nt = note.get("type", "normal")
 	if (nt == "top" or nt == "long_top") and pc <= 2:
 		new_note["top_lane"] = pc
-	elif (nt == "vertical" or nt == "long_vertical") and pc >= 4:
-		new_note["lane"] = pc - 4
+	elif nt in ["normal", "long_normal", "vertical", "long_vertical"] and pc >= 3:
+		new_note["lane"] = pc - 3
 	elif nt == "chain":
 		var ct = note.get("chain_type", "normal")
 		if ct == "top" and pc <= 2:
 			new_note["top_lane"] = pc
-		elif ct == "vertical" and pc >= 4:
-			new_note["lane"] = pc - 4
+		elif pc >= 3:
+			new_note["lane"] = pc - 3
 	# Only emit action if actually moved
 	var time_changed = new_note["time"] != old_note.get("time", 0.0)
 	var col_changed = _note_to_col(new_note) != _note_to_col(old_note)
 	if time_changed or col_changed:
+		# Overlap check for shared-lane notes on move
+		var new_col = _note_to_col(new_note)
+		if new_col >= 3:
+			var move_lane = new_col - 3
+			var nt_type = new_note.get("type", "normal")
+			var move_start = new_note["time"]
+			var move_end: float
+			if nt_type in ["long_normal", "long_top", "long_vertical"]:
+				move_end = new_note.get("end_time", move_start)
+			elif nt_type == "chain":
+				var count = new_note.get("chain_count", 2)
+				var interval = new_note.get("chain_interval", 0.4)
+				move_end = move_start + (count - 1) * interval
+				if new_note.get("last_long", false) and new_note.get("last_end_time", 0.0) > move_end:
+					move_end = new_note.get("last_end_time", move_end)
+			else:
+				move_end = move_start
+			if _lane_occupied(move_lane, move_start, move_end, _note_move_index):
+				# Cancel move: overlap detected
+				_note_move_index = -1
+				return
 		_request_move_action(_note_move_index, old_note, new_note)
 	_note_move_index = -1
 
