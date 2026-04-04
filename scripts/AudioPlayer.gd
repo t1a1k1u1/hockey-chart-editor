@@ -14,6 +14,7 @@ var _audio_offset: float = 0.0         # meta.offset in seconds
 var _is_playing: bool = false
 var _is_paused: bool = false
 var _pause_position: float = 0.0       # playhead time at pause
+var _audio_started: bool = false       # whether AudioStreamPlayer.play() has been called
 
 func _ready() -> void:
 	pass
@@ -22,9 +23,16 @@ func _process(_delta: float) -> void:
 	if _is_playing:
 		var t = get_playhead_time()
 		playhead_time_changed.emit(t)
-		# If the AudioStreamPlayer finished (stream ran out), stop
-		if not is_playing() and stream != null:
-			stop_playback()
+		if stream != null:
+			if not _audio_started:
+				# Wait until chart time reaches the audio start point
+				var audio_pos = t - _audio_offset
+				if audio_pos >= 0.0:
+					play(audio_pos)
+					_audio_started = true
+			elif not is_playing():
+				# AudioStreamPlayer finished naturally
+				stop_playback()
 
 func load_audio_file(path: String) -> bool:
 	if not FileAccess.file_exists(path):
@@ -55,27 +63,14 @@ func play_from(time: float, audio_offset: float) -> void:
 	_play_start_wall = Time.get_ticks_msec()
 	_is_playing = true
 	_is_paused = false
+	_audio_started = false
 
 	if stream != null:
-		if time <= 0.0:
-			# Start at beginning, delay by audio_offset if needed
-			if audio_offset > 0.0:
-				# Will start playing after offset seconds of silence
-				# We schedule play at time 0 in audio but wait offset seconds
-				# Use a timer via callable
-				var call_delay = audio_offset
-				# For simplicity: play immediately at position 0
-				# The playhead will count from 0, audio starts offset seconds in
-				play(0.0)
-			else:
-				play(0.0)
-		else:
-			var audio_pos = time - audio_offset
-			if audio_offset > time:
-				# Audio hasn't started yet relative to song time
-				pass  # Don't play audio yet; we are before the audio start
-			else:
-				play(audio_pos)
+		var audio_pos = time - audio_offset
+		if audio_pos >= 0.0:
+			play(audio_pos)
+			_audio_started = true
+		# else: audio hasn't started yet; _process will call play() when ready
 
 	playback_started.emit()
 

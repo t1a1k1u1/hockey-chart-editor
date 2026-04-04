@@ -16,7 +16,7 @@ func bpm_at(time: float, bpm_changes: Array) -> float:
 func grid_interval(time: float, bpm_changes: Array, snap_division: int) -> float:
 	var bpm = bpm_at(time, bpm_changes)
 	var beat = 60.0 / bpm
-	return beat / snap_division
+	return beat * 4.0 / snap_division
 
 func snap_time(time: float, bpm_changes: Array, snap_division: int) -> float:
 	var interval = grid_interval(time, bpm_changes, snap_division)
@@ -38,7 +38,7 @@ func get_grid_lines(start_time: float, end_time: float, bpm_changes: Array, snap
 		var bpm = sorted_changes[i]["bpm"]
 		var beat = 60.0 / bpm
 		var measure = beat * 4.0
-		var sub = beat / snap_division
+		var sub = beat * 4.0 / snap_division
 		# Start from first grid point >= max(start_time, section_start)
 		var t_start = max(start_time, section_start)
 		# Align to measure grid from section_start

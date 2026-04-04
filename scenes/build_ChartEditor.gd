@@ -90,40 +90,26 @@ func _initialize() -> void:
 
 	var snap_div = OptionButton.new()
 	snap_div.name = "SnapDivSelect"
-	for v in ["1", "2", "3", "4", "6", "8"]:
+	for v in ["4", "6", "8", "12", "16", "24", "32", "48", "64"]:
 		snap_div.add_item(v)
-	snap_div.selected = 3  # default: 4
+	snap_div.selected = 4  # default: 16 (= 4 divisions per beat)
 	ctrl_bar.add_child(snap_div)
 
-	var snap_toggle = CheckButton.new()
-	snap_toggle.name = "SnapToggle"
-	snap_toggle.text = "Snap"
-	snap_toggle.button_pressed = true
-	ctrl_bar.add_child(snap_toggle)
-
 	ctrl_bar.add_child(VSeparator.new())
 
-	var hint_label = Label.new()
-	hint_label.name = "HintLabel"
-	hint_label.text = "click=N/T  v=V  x=Long  c=Chain  v+x=LV  v+c=CV"
-	hint_label.add_theme_font_size_override("font_size", 11)
-	hint_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55, 1.0))
-	ctrl_bar.add_child(hint_label)
+	var bgm_label = Label.new()
+	bgm_label.text = "BGM"
+	ctrl_bar.add_child(bgm_label)
 
-	ctrl_bar.add_child(VSeparator.new())
-
-	var offset_label = Label.new()
-	offset_label.text = "Offset"
-	ctrl_bar.add_child(offset_label)
-
-	var offset_input = SpinBox.new()
-	offset_input.name = "OffsetInput"
-	offset_input.min_value = -10.0
-	offset_input.max_value = 10.0
-	offset_input.step = 0.001
-	offset_input.value = 0.0
-	offset_input.custom_minimum_size.x = 90
-	ctrl_bar.add_child(offset_input)
+	var bgm_slider = HSlider.new()
+	bgm_slider.name = "BgmVolumeSlider"
+	bgm_slider.min_value = 0.0
+	bgm_slider.max_value = 1.0
+	bgm_slider.step = 0.01
+	bgm_slider.value = 0.5
+	bgm_slider.custom_minimum_size = Vector2(80, 0)
+	bgm_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	ctrl_bar.add_child(bgm_slider)
 
 	# ---- Main Area (3 panels) ----
 	var main_hbox = HBoxContainer.new()
@@ -311,6 +297,11 @@ func _initialize() -> void:
 	audio_player.name = "AudioStreamPlayer"
 	audio_player.set_script(load("res://scripts/AudioPlayer.gd"))
 	root.add_child(audio_player)
+
+	# ---- Note Hit Sound Player ----
+	var note_hit_player = AudioStreamPlayer.new()
+	note_hit_player.name = "NoteHitPlayer"
+	root.add_child(note_hit_player)
 
 	# Save
 	set_owner_on_new_nodes(root, root)

@@ -6,6 +6,7 @@ signal note_clicked(note_data: Dictionary, note_index: int)
 signal note_placed(note_data: Dictionary)
 signal ruler_clicked(time: float)
 signal bpm_marker_clicked(bpm_change: Dictionary, change_index: int)
+signal paste_confirmed(snapped_min_time: float)
 
 const RULER_WIDTH = 60.0          # Left ruler width (px)
 const BPM_BAND_WIDTH = 16.0       # BPM change band width (px)
@@ -37,7 +38,7 @@ var bpm_grid = null
 var note_renderer = null
 
 var snap_enabled: bool = true
-var snap_division: int = 4
+var snap_division: int = 16
 var is_select_mode: bool = false
 var selected_notes: Array = []
 
@@ -68,6 +69,11 @@ var _bpm_drag_active: bool = false
 var _bpm_drag_index: int = -1
 var _bpm_drag_original_time: float = 0.0
 
+# Paste mode state
+var _paste_mode_active: bool = false
+var _paste_clipboard: Array = []
+var _paste_ghost_mouse_y: float = 0.0
+
 # VScrollBar reference (set by ChartEditorMain or self during ready)
 var vscrollbar = null
 
@@ -87,6 +93,13 @@ func _ready() -> void:
 			vscrollbar.value_changed.connect(_on_vscroll_changed)
 	# Update scrollbar page whenever Timeline is resized (e.g. window resize)
 	resized.connect(_update_vscroll)
+
+func _process(_delta: float) -> void:
+	if _paste_mode_active:
+		var new_y = get_local_mouse_position().y
+		if abs(new_y - _paste_ghost_mouse_y) > 0.5:
+			_paste_ghost_mouse_y = new_y
+			queue_redraw()
 
 #region Coordinate Transforms
 
@@ -178,6 +191,51 @@ func _draw() -> void:
 		var rect = _get_drag_rect()
 		draw_rect(rect, COLOR_SELECT_RECT)
 		draw_rect(rect, COLOR_SELECT_RECT_BORDER, false, 1.0)
+
+	# 12. Paste mode ghosts
+	if _paste_mode_active and not _paste_clipboard.is_empty():
+		_draw_paste_ghosts()
+
+func _draw_paste_ghosts() -> void:
+	var mouse_time = y_to_time(_paste_ghost_mouse_y)
+	var snapped_time = _snap_time(mouse_time)
+	var min_time = INF
+	for note in _paste_clipboard:
+		var t = note.get("time", 0.0)
+		if t < min_time:
+			min_time = t
+	if min_time == INF:
+		return
+	var time_offset = snapped_time - min_time
+	var cw = get_col_width()
+	var ghost_fill = Color(1.0, 1.0, 0.0, 0.25)
+	var ghost_border = Color(1.0, 1.0, 0.3, 0.85)
+	for note in _paste_clipboard:
+		var adjusted_time = note.get("time", 0.0) + time_offset
+		var col = _note_to_col(note)
+		# cx = column center (matches NoteRenderer convention)
+		var cx = CONTENT_OFFSET_X + col * cw + cw * 0.5
+		var grid_sec = _grid_interval_at(adjusted_time)
+		var note_h = max(grid_sec * pixels_per_second, 8.0) * 0.5
+		var note_w = cw * 0.8
+		# cy = snap point = bottom edge of rect (matches _draw_normal_note)
+		var cy = time_to_y(adjusted_time)
+		var rect = Rect2(cx - note_w * 0.5, cy - note_h, note_w, note_h)
+		draw_rect(rect, ghost_fill)
+		draw_rect(rect, ghost_border, false, 1.5)
+		var note_type = note.get("type", "normal")
+		if note_type in ["long_normal", "long_top", "long_vertical"]:
+			var dur = note.get("end_time", note.get("time", 0.0)) - note.get("time", 0.0)
+			var end_y = time_to_y(adjusted_time + dur)
+			# End note: bottom edge at end_y, drawn downward (end_y to end_y + note_h)
+			var end_rect = Rect2(cx - note_w * 0.5, end_y, note_w, note_h)
+			draw_rect(end_rect, ghost_fill)
+			draw_rect(end_rect, ghost_border, false, 1.5)
+			var band_w = cw * 0.8
+			var top_y = end_y
+			var bot_y = cy - note_h
+			if bot_y > top_y:
+				draw_rect(Rect2(cx - band_w * 0.5, top_y, band_w, bot_y - top_y), Color(1.0, 1.0, 0.0, 0.15))
 
 func _draw_col_backgrounds(h: float) -> void:
 	var cw = get_col_width()
@@ -316,8 +374,18 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 		return
 	var bpm_changes = chart_data.meta.get("bpm_changes", [])
 	var center_time = scroll_offset + (size.y - TRACK_HEADER_HEIGHT) * 0.5 / pixels_per_second
-	# Bug 4 fix: use fixed snap=8 for note height so it doesn't change with snap_division
-	var fixed_grid_sec = bpm_grid.grid_interval(center_time, bpm_changes, 8)
+	# Use fixed snap=32 (= 8 divisions per beat) for note height so it doesn't change with snap_division
+	var fixed_grid_sec = bpm_grid.grid_interval(center_time, bpm_changes, 32)
+
+	# Build set of times that appear on 2 or more notes (simultaneous/chord detection)
+	var time_counts: Dictionary = {}
+	for n in chart_data.notes:
+		var tk = roundi(n.get("time", 0.0) * 10000)
+		time_counts[tk] = time_counts.get(tk, 0) + 1
+	var simultaneous_times: Dictionary = {}
+	for tk in time_counts:
+		if time_counts[tk] >= 2:
+			simultaneous_times[tk] = true
 
 	for i in range(chart_data.notes.size()):
 		var note = chart_data.notes[i]
@@ -328,8 +396,9 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 		if note_end_time < start_time - 1.0 or note_time > end_time + 1.0:
 			continue
 		var is_selected = selected_notes.has(i)
+		var is_simultaneous = simultaneous_times.has(roundi(note_time * 10000))
 		# Bug 1 fix: pass size.y as canvas_height so NoteRenderer uses correct flipped Y
-		note_renderer.draw_note(self, note, scroll_offset, pixels_per_second, is_selected, fixed_grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT, size.y)
+		note_renderer.draw_note(self, note, scroll_offset, pixels_per_second, is_selected, fixed_grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT, size.y, is_simultaneous)
 
 	# Draw move preview
 	if _note_move_active and _note_move_index >= 0 and _note_move_index < chart_data.notes.size():
@@ -571,19 +640,36 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 	if pos.x < CONTENT_OFFSET_X:
 		return
 
+	# Paste mode: click confirms paste position
+	if _paste_mode_active:
+		var snapped_time = _snap_time(y_to_time(pos.y))
+		paste_confirmed.emit(snapped_time)
+		exit_paste_mode()
+		return
+
+	# Ctrl+drag/click: range select (available regardless of select mode)
+	if ctrl_held:
+		var note_idx = _note_at_position(pos)
+		if note_idx >= 0:
+			if selected_notes.has(note_idx):
+				selected_notes.erase(note_idx)
+			else:
+				selected_notes.append(note_idx)
+			_emit_note_clicked_for_selection()
+			queue_redraw()
+		else:
+			_drag_start = pos
+			_drag_end = pos
+			_is_dragging = true
+		return
+
 	if is_select_mode:
 		var note_idx = _note_at_position(pos)
 		if note_idx >= 0:
-			if ctrl_held:
-				if selected_notes.has(note_idx):
-					selected_notes.erase(note_idx)
-				else:
-					selected_notes.append(note_idx)
-			else:
-				selected_notes = [note_idx]
+			selected_notes = [note_idx]
 			_emit_note_clicked_for_selection()
 			queue_redraw()
-			if selected_notes.has(note_idx) and chart_data != null and note_idx < chart_data.notes.size():
+			if chart_data != null and note_idx < chart_data.notes.size():
 				_note_move_active = true
 				_note_move_index = note_idx
 				_note_move_origin_mouse_x = pos.x
@@ -594,10 +680,9 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 				_note_move_preview_time = _note_move_original_time
 				_note_move_preview_col = _note_move_original_col
 		else:
-			if not ctrl_held:
-				selected_notes.clear()
-				_emit_selection_cleared()
-				queue_redraw()
+			selected_notes.clear()
+			_emit_selection_cleared()
+			queue_redraw()
 			_drag_start = pos
 			_drag_end = pos
 			_is_dragging = true
@@ -819,6 +904,9 @@ func _build_note_data(time: float, col: int) -> Dictionary:
 	return note
 
 func _handle_mouse_motion(mme: InputEventMouseMotion) -> void:
+	if _paste_mode_active:
+		return
+
 	if _is_dragging:
 		_drag_end = mme.position
 		queue_redraw()
@@ -1064,6 +1152,19 @@ func _scroll_by(delta_sec: float) -> void:
 #endregion
 
 #region Callbacks
+
+func enter_paste_mode(clipboard: Array) -> void:
+	_paste_clipboard = clipboard.duplicate(true)
+	_paste_mode_active = true
+	_paste_ghost_mouse_y = get_local_mouse_position().y
+	queue_redraw()
+
+func exit_paste_mode() -> void:
+	if not _paste_mode_active:
+		return
+	_paste_mode_active = false
+	_paste_clipboard.clear()
+	queue_redraw()
 
 func set_action_callback(cb: Callable) -> void:
 	_action_callback = cb

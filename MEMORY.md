@@ -1,5 +1,56 @@
 # Project Memory
 
+## Task 9: Key+Click Note Placement
+
+### Note type buttons removed
+- NoteType1-7 buttons, "Type:" label, and surrounding separators removed from build_ChartEditor.gd.
+- Replaced with a single HintLabel: `click=N/T  v=V  x=Long  c=Chain  v+x=LV  v+c=CV` at font_size=11, grey color.
+- `current_note_type` variable removed from both ChartEditorMain.gd and Timeline.gd.
+- `_on_note_type_pressed`, `_update_note_type_buttons`, `set_note_type` removed from ChartEditorMain.
+- KEY_1-KEY_7 note type shortcuts removed from `_unhandled_input`.
+
+### Key-based _build_note_data in Timeline.gd
+- Uses `Input.is_key_pressed(KEY_V/X/C)` with CTRL guard on V and C.
+- col <= 2 = top lane: x=long_top, c=chain(top), else=top (v has no effect in top lane).
+- col 3-9 = shared lanes: v+x=long_vertical, v+c=chain(vertical), v=vertical, x=long_normal, c=chain(normal), else=normal.
+- No longer returns {} for "wrong column" — column determines top vs shared lane automatically.
+
+### _long_drag_note_type variable
+- Added `_long_drag_note_type: String` to Timeline.gd long drag state.
+- Captured in `_place_note_at` from `note_data.get("type")` when long drag begins.
+- Used in `_complete_long_drag` instead of `current_note_type` to build the final note dict.
+- `_place_note_at` now checks `note_data.get("type")` (not `current_note_type`) to decide if long drag should start.
+
+## Task 8: Shared Lane System for Non-Top Notes
+
+### Column layout change: 11 → 10 columns
+- NUM_COLS changed from 11 to 10.
+- Old: TOP0-2 (col 0-2), NORMAL (col 3), V0-V6 (col 4-10).
+- New: TOP0-2 (col 0-2), Shared L0-L6 (col 3-9).
+- Formula: `col = 3 + note.lane` for all non-top notes.
+- normal/long_normal/chain(normal) now require a `lane` field (0..6).
+- vertical/long_vertical/chain(vertical) lane field unchanged.
+
+### _lane_occupied helper
+- Iterates chart_data.notes, skips top-lane notes (col < 3).
+- Gets lane = note_col - 3 per note, skips mismatches.
+- Computes note occupied interval: single=[time,time], long=[time,end_time], chain=[time,last_chain_time] (extends if last_long).
+- Overlap: NOT occupied if end_t < nt - epsilon OR start_t > note_end + epsilon. Uses epsilon=0.01s.
+- exclude_index parameter used during move to exclude the note being moved.
+
+### Overlap detection points
+- _note_exists_at: top notes use exact col+time match; shared lane notes use _lane_occupied.
+- _complete_long_drag: after note dict constructed, check _lane_occupied before emitting note_placed.
+- _complete_note_move: check _lane_occupied(lane, start, end, exclude_index=_note_move_index) before _request_move_action.
+
+### chart.json backward compatibility
+- Existing chart notes without `lane` field default to lane=0 via `note.get("lane", 0)`.
+- This means all old normal notes collapse to L0 on load — expected behavior.
+
+### chain note type detection in _build_note_data
+- For col >= 3, chain_type defaults to "normal" (shared lane). User selects chain type via note type buttons.
+- chain notes in shared lanes always get `lane = col - 3` (no longer distinguish normal vs vertical by col range).
+
 ## Task 7: Timeline Flip + Resize Fix
 
 ### Timeline axis flip (bottom=early, top=late)

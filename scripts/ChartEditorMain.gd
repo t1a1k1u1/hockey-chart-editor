@@ -16,11 +16,18 @@ var selected_notes: Array = []
 var is_select_mode: bool = false
 var playhead_time: float = 0.0
 var snap_enabled: bool = true
-var snap_division: int = 4
+var snap_division: int = 16
 var pixels_per_second: float = 200.0
 
+# Note hit sound
+var note_hit_player: AudioStreamPlayer = null
+var bgm_volume_slider: HSlider = null
+var _last_playhead_time: float = 0.0
+# Sorted list of note times (including chain steps) — rebuilt on chart load
+var _note_hit_times: Array = []
+
 # Clipboard
-var _clipboard: Array = []
+var _paste_clipboard: Array = []
 
 # Pending action for "unsaved changes" guard
 var _pending_action: String = ""   # "new", "open", "quit"
@@ -33,8 +40,6 @@ var status_label: Label = null
 var time_label: Label = null
 var bpm_input: SpinBox = null
 var snap_div_select: OptionButton = null
-var snap_toggle: CheckButton = null
-var offset_input: SpinBox = null
 
 # Dialog references
 var file_dialog: FileDialog = null
@@ -62,8 +67,6 @@ func _ready() -> void:
 				time_label = ctrl_bar.get_node_or_null("TimeLabel")
 				bpm_input = ctrl_bar.get_node_or_null("BpmInput")
 				snap_div_select = ctrl_bar.get_node_or_null("SnapDivSelect")
-				snap_toggle = ctrl_bar.get_node_or_null("SnapToggle")
-				offset_input = ctrl_bar.get_node_or_null("OffsetInput")
 				var play_btn = ctrl_bar.get_node_or_null("PlayButton")
 				if play_btn:
 					play_btn.pressed.connect(_on_play_button_pressed)
@@ -72,12 +75,12 @@ func _ready() -> void:
 					stop_btn.pressed.connect(_on_stop_button_pressed)
 				if bpm_input:
 					bpm_input.value_changed.connect(_on_bpm_changed)
-				if offset_input:
-					offset_input.value_changed.connect(_on_offset_changed)
-				if snap_toggle:
-					snap_toggle.toggled.connect(_on_snap_toggled)
 				if snap_div_select:
 					snap_div_select.item_selected.connect(_on_snap_div_selected)
+				bgm_volume_slider = ctrl_bar.get_node_or_null("BgmVolumeSlider")
+				if bgm_volume_slider:
+					bgm_volume_slider.value_changed.connect(_on_bgm_volume_changed)
+	
 
 		var main_area = vbox.get_node_or_null("MainArea")
 		if main_area:
@@ -149,6 +152,12 @@ func _ready() -> void:
 		if audio_player.has_signal("playhead_time_changed"):
 			audio_player.connect("playhead_time_changed", _on_audio_playhead_changed)
 
+	# Note hit player
+	note_hit_player = get_node_or_null("NoteHitPlayer")
+	if note_hit_player:
+		note_hit_player.stream = _generate_click_sound()
+		note_hit_player.volume_db = linear_to_db(0.7)
+
 	# Build BPM change dialog
 	_build_bpm_change_dialog()
 
@@ -165,6 +174,8 @@ func _ready() -> void:
 			timeline.connect("ruler_clicked", _on_ruler_clicked)
 		if timeline.has_signal("bpm_marker_clicked"):
 			timeline.connect("bpm_marker_clicked", _on_bpm_marker_clicked)
+		if timeline.has_signal("paste_confirmed"):
+			timeline.connect("paste_confirmed", _on_paste_confirmed)
 		if timeline.has_method("set_action_callback"):
 			timeline.call("set_action_callback", _on_timeline_action_requested)
 		if timeline.has_method("set_move_action_callback"):
@@ -218,6 +229,7 @@ func _new_chart() -> void:
 	if property_panel:
 		property_panel.set_chart_data(chart_data)
 		property_panel.show_metadata()
+	_rebuild_note_hit_times()
 	chart_loaded.emit()
 
 func _do_new() -> void:
@@ -296,6 +308,7 @@ func _load_from_path(path: String) -> void:
 	if property_panel:
 		property_panel.set_chart_data(chart_data)
 		property_panel.show_metadata()
+	_rebuild_note_hit_times()
 	chart_loaded.emit()
 
 func _try_load_audio(chart_path: String) -> void:
@@ -323,11 +336,6 @@ func _sync_controls_to_chart() -> void:
 		bpm_input.set_block_signals(true)
 		bpm_input.value = chart_data.meta.get("bpm", 120.0)
 		bpm_input.set_block_signals(false)
-	if offset_input:
-		offset_input.set_block_signals(true)
-		offset_input.value = chart_data.meta.get("offset", 0.0)
-		offset_input.set_block_signals(false)
-
 func _update_title() -> void:
 	var title = "Hockey Chart Editor"
 	if current_file_path != "":
@@ -375,17 +383,8 @@ func _on_bpm_changed(value: float) -> void:
 		chart_data.meta["bpm_changes"][0]["bpm"] = value
 	_mark_dirty()
 
-func _on_offset_changed(value: float) -> void:
-	chart_data.meta["offset"] = value
-	_mark_dirty()
-
-func _on_snap_toggled(pressed: bool) -> void:
-	snap_enabled = pressed
-	if timeline:
-		timeline.snap_enabled = snap_enabled
-
 func _on_snap_div_selected(index: int) -> void:
-	var snap_vals = [1, 2, 3, 4, 6, 8]
+	var snap_vals = [4, 6, 8, 12, 16, 24, 32, 48, 64]
 	snap_division = snap_vals[index]
 	if timeline:
 		timeline.snap_division = snap_division
@@ -398,11 +397,9 @@ func _on_stop_button_pressed() -> void:
 	stop_playback()
 
 func stop_playback() -> void:
-	var return_time = playhead_time
 	if audio_player:
-		return_time = audio_player._play_start_playhead
 		audio_player.stop_playback()
-	playhead_time = return_time
+	playhead_time = 0.0
 	playhead_moved.emit(playhead_time)
 	if timeline:
 		timeline.playhead_time = playhead_time
@@ -531,10 +528,6 @@ func _on_metadata_ok() -> void:
 			bpm_input.set_block_signals(false)
 	if offset_spin:
 		chart_data.meta["offset"] = offset_spin.value
-		if offset_input:
-			offset_input.set_block_signals(true)
-			offset_input.value = offset_spin.value
-			offset_input.set_block_signals(false)
 
 	metadata_dialog.hide()
 	_mark_dirty()
@@ -555,6 +548,7 @@ func execute_action(action) -> void:
 	_mark_dirty()
 	_update_status()
 	_sync_selection_to_timeline()
+	_rebuild_note_hit_times()
 	if timeline:
 		timeline.queue_redraw()
 
@@ -652,29 +646,24 @@ func duplicate_selected() -> void:
 	if timeline:
 		timeline.queue_redraw()
 
-func copy_selected() -> void:
-	_clipboard.clear()
-	for idx in selected_notes:
-		if idx >= 0 and idx < chart_data.notes.size():
-			_clipboard.append(chart_data.notes[idx].duplicate(true))
-
-func paste_clipboard() -> void:
-	if _clipboard.is_empty():
+func _on_paste_confirmed(snapped_min_time: float) -> void:
+	if _paste_clipboard.is_empty():
 		return
-	# Find earliest time in clipboard
 	var min_time = INF
-	for note in _clipboard:
+	for note in _paste_clipboard:
 		var t = note.get("time", 0.0)
 		if t < min_time:
 			min_time = t
-	var offset_time = playhead_time - min_time
+	if min_time == INF:
+		return
+	var time_offset = snapped_min_time - min_time
 	var new_indices: Array = []
-	for note in _clipboard:
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+	for note in _paste_clipboard:
 		var dup = note.duplicate(true)
-		dup["time"] = dup.get("time", 0.0) + offset_time
+		dup["time"] = dup.get("time", 0.0) + time_offset
 		if dup.has("end_time"):
-			dup["end_time"] = dup["end_time"] + offset_time
-		var action_script = load("res://scripts/UndoRedoAction.gd")
+			dup["end_time"] = dup["end_time"] + time_offset
 		var action = action_script.AddNoteAction.new(dup)
 		action.execute(chart_data)
 		undo_stack.append(action)
@@ -788,10 +777,13 @@ func _input(event: InputEvent) -> void:
 		duplicate_selected()
 		get_viewport().set_input_as_handled()
 	elif ctrl and kc == KEY_C:
-		copy_selected()
-		get_viewport().set_input_as_handled()
-	elif ctrl and kc == KEY_V:
-		paste_clipboard()
+		if not selected_notes.is_empty():
+			_paste_clipboard.clear()
+			for idx in selected_notes:
+				if idx >= 0 and idx < chart_data.notes.size():
+					_paste_clipboard.append(chart_data.notes[idx].duplicate(true))
+			if not _paste_clipboard.is_empty() and timeline:
+				timeline.call("enter_paste_mode", _paste_clipboard)
 		get_viewport().set_input_as_handled()
 	elif kc == KEY_DELETE:
 		if _selected_bpm_change_index > 0:
@@ -807,6 +799,8 @@ func _input(event: InputEvent) -> void:
 			delete_selected()
 		get_viewport().set_input_as_handled()
 	elif kc == KEY_ESCAPE:
+		if timeline:
+			timeline.call("exit_paste_mode")
 		if audio_player and (audio_player.is_playing_audio() or audio_player._is_paused):
 			stop_playback()
 		else:
@@ -817,9 +811,6 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif kc == KEY_S and not ctrl:
 		toggle_select_mode()
-		get_viewport().set_input_as_handled()
-	elif kc == KEY_TAB:
-		toggle_snap()
 		get_viewport().set_input_as_handled()
 	elif kc == KEY_BRACKETLEFT:
 		snap_coarser()
@@ -851,17 +842,9 @@ func toggle_select_mode() -> void:
 	if timeline:
 		timeline.is_select_mode = is_select_mode
 
-func toggle_snap() -> void:
-	snap_enabled = not snap_enabled
-	if snap_toggle:
-		snap_toggle.set_block_signals(true)
-		snap_toggle.button_pressed = snap_enabled
-		snap_toggle.set_block_signals(false)
-	if timeline:
-		timeline.snap_enabled = snap_enabled
 
 func snap_coarser() -> void:
-	var snap_vals = [1, 2, 3, 4, 6, 8]
+	var snap_vals = [4, 6, 8, 12, 16, 24, 32, 48, 64]
 	var idx = snap_vals.find(snap_division)
 	if idx > 0:
 		snap_division = snap_vals[idx - 1]
@@ -871,7 +854,7 @@ func snap_coarser() -> void:
 			snap_div_select.selected = idx - 1
 
 func snap_finer() -> void:
-	var snap_vals = [1, 2, 3, 4, 6, 8]
+	var snap_vals = [4, 6, 8, 12, 16, 24, 32, 48, 64]
 	var idx = snap_vals.find(snap_division)
 	if idx >= 0 and idx < snap_vals.size() - 1:
 		snap_division = snap_vals[idx + 1]
@@ -895,6 +878,9 @@ func set_playhead_time(t: float) -> void:
 	playhead_time = max(0.0, t)
 	playhead_moved.emit(playhead_time)
 	if audio_player:
+		# Clicking to change position while paused cancels pause state
+		if audio_player._is_paused:
+			audio_player._is_paused = false
 		audio_player.set_playhead_time(playhead_time)
 	if timeline:
 		timeline.playhead_time = playhead_time
@@ -951,11 +937,12 @@ func _on_note_clicked(note_data: Dictionary, note_index: int) -> void:
 		# Cleared
 		selected_notes.clear()
 		_selected_bpm_change_index = -1
-	elif not selected_notes.has(note_index):
-		selected_notes = [note_index]
 	else:
-		selected_notes = [note_index]
-	_sync_selection_to_timeline()
+		# Read full selection from Timeline to preserve rect-select multi-selection
+		if timeline:
+			selected_notes = timeline.selected_notes.duplicate()
+		else:
+			selected_notes = [note_index]
 	_update_property_panel()
 	selection_changed.emit(selected_notes)
 
@@ -995,14 +982,10 @@ func _on_metadata_field_changed(field: String, value: Variant) -> void:
 			bpm_input.set_block_signals(true)
 			bpm_input.value = float(value)
 			bpm_input.set_block_signals(false)
-	elif field == "offset":
-		if offset_input:
-			offset_input.set_block_signals(true)
-			offset_input.value = float(value)
-			offset_input.set_block_signals(false)
 	_mark_dirty()
 
 func _on_playback_started() -> void:
+	_last_playhead_time = audio_player._play_start_playhead
 	var ctrl_bar = get_node_or_null("RootVBox/ControlBarPanel/ControlBar")
 	if ctrl_bar:
 		var play_btn = ctrl_bar.get_node_or_null("PlayButton")
@@ -1030,6 +1013,13 @@ func _on_audio_playhead_changed(time: float) -> void:
 	if timeline:
 		timeline.playhead_time = time
 		timeline.queue_redraw()
+	# Trigger note hit sounds for notes passed since last frame
+	if note_hit_player and not _note_hit_times.is_empty() and time > _last_playhead_time:
+		for hit_t in _note_hit_times:
+			if hit_t > _last_playhead_time and hit_t <= time:
+				note_hit_player.play()
+				break  # one click per frame is enough for a clear click sound
+	_last_playhead_time = time
 	# Auto-scroll (flipped axis: bottom=early time): keep playhead near bottom 10%
 	if timeline and timeline.size.y > 0:
 		var visible_duration = (timeline.size.y - 24.0) / pixels_per_second
@@ -1057,6 +1047,50 @@ func _update_property_panel() -> void:
 			property_panel.show_bpm_change(bpm_changes[_selected_bpm_change_index], _selected_bpm_change_index)
 	else:
 		property_panel.show_selection(selected_notes)
+
+#endregion
+
+#region Note hit sound
+
+func _generate_click_sound() -> AudioStreamWAV:
+	var sample_rate = 44100
+	var duration_samples = 1764  # ~40ms
+	var freq = 880.0
+	var wav = AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = sample_rate
+	wav.stereo = false
+	var data = PackedByteArray()
+	data.resize(duration_samples * 2)
+	for i in range(duration_samples):
+		var t = float(i) / float(sample_rate)
+		var envelope = exp(-t * 80.0)
+		var sample = sin(2.0 * PI * freq * t) * envelope
+		var val = int(clamp(sample * 32767.0, -32768.0, 32767.0))
+		data[i * 2] = val & 0xFF
+		data[i * 2 + 1] = (val >> 8) & 0xFF
+	wav.data = data
+	return wav
+
+func _rebuild_note_hit_times() -> void:
+	_note_hit_times.clear()
+	if chart_data == null:
+		return
+	for note in chart_data.notes:
+		var t = note.get("time", 0.0)
+		_note_hit_times.append(t)
+		# Expand chain note steps
+		if note.get("type", "") == "chain":
+			var count = note.get("chain_count", 1)
+			var interval = note.get("chain_interval", 0.0)
+			for step in range(1, count):
+				_note_hit_times.append(t + step * interval)
+	_note_hit_times.sort()
+
+func _on_bgm_volume_changed(value: float) -> void:
+	if audio_player:
+		audio_player.volume_db = -80.0 if value <= 0.0 else linear_to_db(value)
+
 
 #endregion
 
