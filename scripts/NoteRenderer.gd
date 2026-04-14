@@ -24,7 +24,7 @@ func get_note_color(note: Dictionary) -> Color:
 				_: return COLOR_CHAIN_NORMAL
 	return COLOR_NORMAL
 
-func draw_note(canvas: CanvasItem, note: Dictionary, scroll_offset: float, pixels_per_second: float, is_selected: bool, grid_sec: float, col_width: float, content_offset_x: float, header_height: float, canvas_height: float = 0.0, is_simultaneous: bool = false) -> void:
+func draw_note(canvas: CanvasItem, note: Dictionary, scroll_offset: float, pixels_per_second: float, is_selected: bool, grid_sec: float, col_width: float, content_offset_x: float, header_height: float, canvas_height: float = 0.0) -> void:
 	var t = note.get("type", "normal")
 	var color = get_note_color(note)
 	var col = _get_note_col(note)
@@ -44,12 +44,6 @@ func draw_note(canvas: CanvasItem, note: Dictionary, scroll_offset: float, pixel
 			_draw_long_note(canvas, cx, center_y, y2, color, is_selected, col_width, fixed_grid_sec, pixels_per_second)
 		"chain":
 			_draw_chain_note(canvas, note, scroll_offset, pixels_per_second, cx, color, is_selected, col_width, fixed_grid_sec, h)
-
-	if is_simultaneous:
-		var note_h = maxf(fixed_grid_sec * pixels_per_second, 8.0)
-		var ring_center = Vector2(cx, center_y - note_h * 0.5)
-		var ring_r = col_width * 0.55
-		canvas.draw_arc(ring_center, ring_r, 0.0, TAU, 32, Color(1.0, 1.0, 0.0), 2.0)
 
 func _draw_normal_note(canvas: CanvasItem, cx: float, cy: float, color: Color, is_selected: bool, col_width: float, grid_sec: float, pixels_per_second: float) -> void:
 	var h = max(grid_sec * pixels_per_second, 8.0)

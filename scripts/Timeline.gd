@@ -377,16 +377,6 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 	# Use fixed snap=32 (= 8 divisions per beat) for note height so it doesn't change with snap_division
 	var fixed_grid_sec = bpm_grid.grid_interval(center_time, bpm_changes, 32)
 
-	# Build set of times that appear on 2 or more notes (simultaneous/chord detection)
-	var time_counts: Dictionary = {}
-	for n in chart_data.notes:
-		var tk = roundi(n.get("time", 0.0) * 10000)
-		time_counts[tk] = time_counts.get(tk, 0) + 1
-	var simultaneous_times: Dictionary = {}
-	for tk in time_counts:
-		if time_counts[tk] >= 2:
-			simultaneous_times[tk] = true
-
 	for i in range(chart_data.notes.size()):
 		var note = chart_data.notes[i]
 		if _note_move_active and i == _note_move_index:
@@ -396,9 +386,8 @@ func _draw_notes(start_time: float, end_time: float) -> void:
 		if note_end_time < start_time - 1.0 or note_time > end_time + 1.0:
 			continue
 		var is_selected = selected_notes.has(i)
-		var is_simultaneous = simultaneous_times.has(roundi(note_time * 10000))
 		# Bug 1 fix: pass size.y as canvas_height so NoteRenderer uses correct flipped Y
-		note_renderer.draw_note(self, note, scroll_offset, pixels_per_second, is_selected, fixed_grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT, size.y, is_simultaneous)
+		note_renderer.draw_note(self, note, scroll_offset, pixels_per_second, is_selected, fixed_grid_sec, get_col_width(), CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT, size.y)
 
 	# Draw move preview
 	if _note_move_active and _note_move_index >= 0 and _note_move_index < chart_data.notes.size():
