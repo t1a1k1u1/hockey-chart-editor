@@ -60,6 +60,12 @@ func _initialize() -> void:
 	stop_btn.custom_minimum_size = Vector2(32, 0)
 	ctrl_bar.add_child(stop_btn)
 
+	var reset_base_btn = Button.new()
+	reset_base_btn.name = "ResetBaseButton"
+	reset_base_btn.text = "⏮"
+	reset_base_btn.custom_minimum_size = Vector2(32, 0)
+	ctrl_bar.add_child(reset_base_btn)
+
 	var time_label = Label.new()
 	time_label.name = "TimeLabel"
 	time_label.text = "0:00.000"

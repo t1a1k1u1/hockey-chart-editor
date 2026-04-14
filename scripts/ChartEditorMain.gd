@@ -15,6 +15,7 @@ var redo_stack: Array = []
 var selected_notes: Array = []
 var is_select_mode: bool = false
 var playhead_time: float = 0.0
+var playback_base_time: float = 0.0
 var snap_enabled: bool = true
 var snap_division: int = 16
 var pixels_per_second: float = 200.0
@@ -73,6 +74,9 @@ func _ready() -> void:
 				var stop_btn = ctrl_bar.get_node_or_null("StopButton")
 				if stop_btn:
 					stop_btn.pressed.connect(_on_stop_button_pressed)
+				var reset_base_btn = ctrl_bar.get_node_or_null("ResetBaseButton")
+				if reset_base_btn:
+					reset_base_btn.pressed.connect(_on_reset_base_pressed)
 				if bpm_input:
 					bpm_input.value_changed.connect(_on_bpm_changed)
 				if snap_div_select:
@@ -396,10 +400,17 @@ func _on_play_button_pressed() -> void:
 func _on_stop_button_pressed() -> void:
 	stop_playback()
 
+func _on_reset_base_pressed() -> void:
+	playback_base_time = 0.0
+	if timeline:
+		timeline.playback_base_time = playback_base_time
+		timeline.queue_redraw()
+	set_playhead_time(0.0)
+
 func stop_playback() -> void:
 	if audio_player:
 		audio_player.stop_playback()
-	playhead_time = 0.0
+	playhead_time = playback_base_time
 	playhead_moved.emit(playhead_time)
 	if timeline:
 		timeline.playhead_time = playhead_time
@@ -947,6 +958,10 @@ func _on_note_clicked(note_data: Dictionary, note_index: int) -> void:
 	selection_changed.emit(selected_notes)
 
 func _on_ruler_clicked(time: float) -> void:
+	playback_base_time = time
+	if timeline:
+		timeline.playback_base_time = playback_base_time
+		timeline.queue_redraw()
 	set_playhead_time(time)
 
 func _on_bpm_marker_clicked(bpm_change: Dictionary, change_index: int) -> void:

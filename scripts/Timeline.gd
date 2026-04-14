@@ -25,6 +25,7 @@ const COLOR_RULER_BG = Color(0.08, 0.08, 0.10, 1.0)
 const COLOR_BPM_BAND_BG = Color(0.06, 0.06, 0.09, 1.0)
 const COLOR_HEADER_BG = Color(0.12, 0.12, 0.15, 1.0)
 const COLOR_PLAYHEAD = Color(1.0, 0.267, 0.267)     # #FF4444
+const COLOR_BASE_LINE = Color(1.0, 1.0, 0.0, 0.7)  # yellow
 const COLOR_SELECT_RECT = Color(1.0, 1.0, 0.0, 0.15)
 const COLOR_SELECT_RECT_BORDER = Color(1.0, 1.0, 0.0, 0.6)
 const COLOR_LONG_PREVIEW = Color(0.6, 0.8, 1.0, 0.4)
@@ -32,6 +33,8 @@ const COLOR_LONG_PREVIEW = Color(0.6, 0.8, 1.0, 0.4)
 var pixels_per_second: float = DEFAULT_PPS
 var scroll_offset: float = 0.0  # seconds
 var playhead_time: float = 0.0
+var playback_base_time: float = 0.0
+var _vscroll_max_scroll: float = 0.0  # total_duration - visible_secs (for inverted scrollbar)
 
 var chart_data = null
 var bpm_grid = null
@@ -181,7 +184,10 @@ func _draw() -> void:
 	if _long_drag_active:
 		_draw_long_preview()
 
-	# 10. Playhead (horizontal line)
+	# 10. Playback base line (yellow) + Playhead (red)
+	var by = time_to_y(playback_base_time)
+	if by >= TRACK_HEADER_HEIGHT and by <= h:
+		draw_line(Vector2(CONTENT_OFFSET_X, by), Vector2(w, by), COLOR_BASE_LINE, 1.5)
 	var py = time_to_y(playhead_time)
 	if py >= TRACK_HEADER_HEIGHT and py <= h:
 		draw_line(Vector2(CONTENT_OFFSET_X, py), Vector2(w, py), COLOR_PLAYHEAD, 2.0)
@@ -451,15 +457,17 @@ func _update_vscroll() -> void:
 				total_duration = nt + chain_dur
 	total_duration = max(total_duration + 10.0, 60.0)
 	var visible_secs = (size.y - TRACK_HEADER_HEIGHT) / pixels_per_second
+	_vscroll_max_scroll = max(total_duration - visible_secs, 0.0)
 	vscrollbar.set_block_signals(true)
 	vscrollbar.min_value = 0.0
 	vscrollbar.max_value = total_duration
 	vscrollbar.page = visible_secs
-	vscrollbar.value = scroll_offset
+	# Inverted mapping: scroll_offset=0 (start of chart) → scrollbar at bottom
+	vscrollbar.value = _vscroll_max_scroll - scroll_offset
 	vscrollbar.set_block_signals(false)
 
 func _on_vscroll_changed(value: float) -> void:
-	scroll_offset = value
+	scroll_offset = clamp(_vscroll_max_scroll - value, 0.0, _vscroll_max_scroll)
 	queue_redraw()
 
 #endregion
@@ -561,11 +569,11 @@ func _handle_mouse_button(mbe: InputEventMouseButton) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		elif not mbe.ctrl_pressed and mbe.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_scroll_by(-80.0 / pixels_per_second)
+			_scroll_by(80.0 / pixels_per_second)
 			get_viewport().set_input_as_handled()
 			return
 		elif not mbe.ctrl_pressed and mbe.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_scroll_by(80.0 / pixels_per_second)
+			_scroll_by(-80.0 / pixels_per_second)
 			get_viewport().set_input_as_handled()
 			return
 
