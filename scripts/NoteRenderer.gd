@@ -74,8 +74,8 @@ func _draw_long_note(canvas: CanvasItem, cx: float, y1: float, y2: float, color:
 	var start_rect = Rect2(cx - note_w * 0.5, start_y - note_h, note_w, note_h)
 	canvas.draw_rect(start_rect, color)
 
-	# End note (top = late time): rect from end_y to end_y+note_h
-	var end_rect = Rect2(cx - note_w * 0.5, end_y, note_w, note_h)
+	# End note (top = late time): rect from end_y-note_h to end_y (bottom edge at end_y)
+	var end_rect = Rect2(cx - note_w * 0.5, end_y - note_h, note_w, note_h)
 	canvas.draw_rect(end_rect, color)
 
 	if is_selected:

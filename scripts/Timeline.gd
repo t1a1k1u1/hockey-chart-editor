@@ -49,6 +49,7 @@ var selected_notes: Array = []
 var _drag_start: Vector2 = Vector2.ZERO
 var _drag_end: Vector2 = Vector2.ZERO
 var _is_dragging: bool = false
+var _drag_scroll_velocity: float = 0.0  # sec/sec auto-scroll during rect drag
 
 # Long note drag state
 var _long_drag_active: bool = false
@@ -97,12 +98,18 @@ func _ready() -> void:
 	# Update scrollbar page whenever Timeline is resized (e.g. window resize)
 	resized.connect(_update_vscroll)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _paste_mode_active:
 		var new_y = get_local_mouse_position().y
 		if abs(new_y - _paste_ghost_mouse_y) > 0.5:
 			_paste_ghost_mouse_y = new_y
 			queue_redraw()
+
+	# Auto-scroll during Ctrl+drag range selection
+	if _is_dragging and _drag_scroll_velocity != 0.0:
+		_scroll_by(_drag_scroll_velocity * delta)
+		_drag_end = get_local_mouse_position()
+		queue_redraw()
 
 #region Coordinate Transforms
 
@@ -604,9 +611,74 @@ func _handle_right_click(pos: Vector2) -> void:
 	if pos.x >= CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
 		var idx = _note_at_position(pos)
 		if idx >= 0:
+			var note = chart_data.notes[idx]
 			var action_script = load("res://scripts/UndoRedoAction.gd")
-			var action = action_script.DeleteNoteAction.new(idx, chart_data.notes[idx])
-			_request_action(action)
+			if note.get("type", "") == "chain":
+				_handle_right_click_chain(pos, idx, note, action_script)
+			else:
+				var action = action_script.DeleteNoteAction.new(idx, note)
+				_request_action(action)
+
+func _handle_right_click_chain(pos: Vector2, idx: int, note: Dictionary, action_script) -> void:
+	var click_time = y_to_time(pos.y)
+	var chain_count = note.get("chain_count", 2)
+	var interval = note.get("chain_interval", 0.4)
+	var start_time = note.get("time", 0.0)
+	var bpm_changes = chart_data.meta.get("bpm_changes", [])
+	var grid_sec = bpm_grid.grid_interval(click_time, bpm_changes, snap_division)
+	var half_h_sec = max(grid_sec * 0.6, 4.0 / pixels_per_second)
+
+	# Find which sub-note was clicked (closest match)
+	var clicked_sub = -1
+	for ci in range(chain_count):
+		var ct = start_time + ci * interval
+		if abs(click_time - ct) <= half_h_sec:
+			clicked_sub = ci
+			break
+
+	if clicked_sub < 0 or clicked_sub == 0:
+		# Clicked head or no match: delete entire chain
+		var action = action_script.DeleteNoteAction.new(idx, note)
+		_request_action(action)
+		return
+
+	var last_long = note.get("last_long", false)
+	if clicked_sub == chain_count - 1 and last_long:
+		# Clicked the last sub-note which has a long extension: remove only the long part
+		var new_note = note.duplicate(true)
+		new_note["last_long"] = false
+		if new_note.has("last_end_time"):
+			new_note.erase("last_end_time")
+		var action = action_script.ReplaceNoteAction.new(idx, note, new_note)
+		_request_action(action)
+		return
+
+	# Truncate chain: keep sub-notes 0..clicked_sub-1
+	# If only 1 note would remain, convert the chain head to a plain note
+	if clicked_sub == 1:
+		var chain_type = note.get("chain_type", "normal")
+		var plain_type: String
+		match chain_type:
+			"top": plain_type = "top"
+			"vertical": plain_type = "vertical"
+			_: plain_type = "normal"
+		var new_note: Dictionary = {"type": plain_type, "time": start_time}
+		if plain_type == "top":
+			new_note["top_lane"] = note.get("top_lane", 0)
+		else:
+			new_note["lane"] = note.get("lane", 0)
+		var action = action_script.ReplaceNoteAction.new(idx, note, new_note)
+		_request_action(action)
+		return
+
+	var new_note = note.duplicate(true)
+	new_note["chain_count"] = clicked_sub
+	# last_long was for the original last note; remove it since that note is being cut off
+	new_note["last_long"] = false
+	if new_note.has("last_end_time"):
+		new_note.erase("last_end_time")
+	var action = action_script.ReplaceNoteAction.new(idx, note, new_note)
+	_request_action(action)
 
 func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 	if chart_data == null:
@@ -906,6 +978,18 @@ func _handle_mouse_motion(mme: InputEventMouseMotion) -> void:
 
 	if _is_dragging:
 		_drag_end = mme.position
+		# Compute auto-scroll velocity based on proximity to top/bottom edges
+		const SCROLL_ZONE = 60.0   # px from edge where scroll starts
+		const MAX_SCROLL_SPEED = 4.0  # sec/sec at edge
+		var my = mme.position.y
+		if my < TRACK_HEADER_HEIGHT + SCROLL_ZONE:
+			var t = (TRACK_HEADER_HEIGHT + SCROLL_ZONE - my) / SCROLL_ZONE
+			_drag_scroll_velocity = t * MAX_SCROLL_SPEED   # scroll to later time (up)
+		elif my > size.y - SCROLL_ZONE:
+			var t = (my - (size.y - SCROLL_ZONE)) / SCROLL_ZONE
+			_drag_scroll_velocity = -t * MAX_SCROLL_SPEED  # scroll to earlier time (down)
+		else:
+			_drag_scroll_velocity = 0.0
 		queue_redraw()
 		return
 
@@ -942,6 +1026,7 @@ func _handle_mouse_motion(mme: InputEventMouseMotion) -> void:
 func _handle_left_release(pos: Vector2) -> void:
 	if _is_dragging:
 		_is_dragging = false
+		_drag_scroll_velocity = 0.0
 		_complete_rect_selection()
 		queue_redraw()
 		return
