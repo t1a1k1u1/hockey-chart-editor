@@ -4,3 +4,4 @@ assets
 screenshots
 .godot
 *.import
+build/
