@@ -1,5 +1,22 @@
 # Project Memory
 
+## Task 13: Supabase Upload
+
+### SupabaseUploader.gd pattern
+- Uses `HTTPRequest.request_raw(url, headers, HTTPClient.METHOD_POST, body_bytes)` for binary-body HTTP uploads.
+- Chain: `_upload_chart()` → `_on_chart_uploaded()` → `_upload_music()` (if needed) → `_on_music_uploaded()`.
+- `request_completed` signal carries `(result, code, headers, body)` — use `.bind(http)` to pass the HTTPRequest node so it can be `queue_free()`'d in the callback.
+- Supabase Storage upsert requires headers: `Authorization: Bearer <anon_key>`, `x-upsert: true`, `Content-Type: <mime>`.
+
+### Dynamic Window dialog pattern
+- `Window` created dynamically, added to `get_tree().root` (not `add_child(self)`) so it doesn't get destroyed with the parent scene.
+- `_upload_dialog` guard: check `is_instance_valid(_upload_dialog)` before reuse.
+- Lambda closures in button `pressed.connect(func(): ...)` work fine for simple hide/show.
+
+### Config at user://supabase_config.json
+- Created on first run with placeholder values; shared with game client.
+- `_is_supabase_configured()` detects unconfigured state via `begins_with("YOUR_")` check.
+
 ## Task 9: Key+Click Note Placement
 
 ### Note type buttons removed

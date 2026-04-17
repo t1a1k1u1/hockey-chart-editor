@@ -24,6 +24,8 @@ func _initialize() -> void:
 	file_menu.add_separator()
 	file_menu.add_item("Save", 2)
 	file_menu.add_item("Save As...", 3)
+	file_menu.add_separator()
+	file_menu.add_item("Supabase にアップロード", 5)
 	menu_bar.add_child(file_menu)
 	menu_bar.set_menu_title(0, "File")
 

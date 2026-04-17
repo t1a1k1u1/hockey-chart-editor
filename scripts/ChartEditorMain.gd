@@ -53,6 +53,13 @@ var _file_dialog_mode: String = ""   # "open", "save_as"
 
 # BPM change being edited in PropertyPanel
 var _selected_bpm_change_index: int = -1
+
+# Supabase upload
+var _supabase_config: Dictionary = {}
+var _upload_dialog: Window = null
+var _upload_status_label: Label = null
+var _uploader: Node = null
+
 func _ready() -> void:
 
 	chart_data = load("res://scripts/ChartData.gd").new()
@@ -195,6 +202,7 @@ func _ready() -> void:
 			property_panel.bpm_change_edited.connect(_on_bpm_change_edited)
 
 	_new_chart()
+	_load_supabase_config()
 
 func _build_bpm_change_dialog() -> void:
 	bpm_change_dialog = ConfirmationDialog.new()
@@ -212,6 +220,223 @@ func _build_bpm_change_dialog() -> void:
 	bpm_change_dialog.add_child(vb)
 	bpm_change_dialog.confirmed.connect(_on_bpm_change_dialog_confirmed)
 	add_child(bpm_change_dialog)
+
+#region Supabase Upload
+
+func _load_supabase_config() -> void:
+	var path = "user://supabase_config.json"
+	if not FileAccess.file_exists(path):
+		var f = FileAccess.open(path, FileAccess.WRITE)
+		if f:
+			f.store_string('{"url":"YOUR_SUPABASE_URL","anon_key":"YOUR_ANON_KEY","bucket":"songs"}')
+			f.close()
+	var f = FileAccess.open(path, FileAccess.READ)
+	if f:
+		var parsed = JSON.parse_string(f.get_as_text())
+		f.close()
+		if parsed is Dictionary:
+			_supabase_config = parsed
+
+func _is_supabase_configured() -> bool:
+	var url = _supabase_config.get("url", "")
+	return url.length() > 0 and not url.begins_with("YOUR_")
+
+func _on_upload_pressed() -> void:
+	if current_file_path == "":
+		if accept_dialog:
+			accept_dialog.title = "エラー"
+			accept_dialog.dialog_text = "先にファイルを保存してください"
+			accept_dialog.popup_centered()
+		return
+	_show_upload_dialog()
+
+func _show_upload_dialog() -> void:
+	# If dialog exists, just show it again
+	if _upload_dialog != null and is_instance_valid(_upload_dialog):
+		_upload_dialog.popup_centered()
+		return
+
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vbox.add_theme_constant_override("separation", 8)
+
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(margin)
+
+	var inner_vbox = VBoxContainer.new()
+	inner_vbox.add_theme_constant_override("separation", 6)
+	margin.add_child(inner_vbox)
+
+	# Config section (always show for easy updates)
+	var cfg_lbl = Label.new()
+	cfg_lbl.text = "Supabase 設定"
+	cfg_lbl.add_theme_font_size_override("font_size", 13)
+	inner_vbox.add_child(cfg_lbl)
+
+	var url_hbox = HBoxContainer.new()
+	var url_lbl = Label.new()
+	url_lbl.text = "URL:"
+	url_lbl.custom_minimum_size.x = 70
+	url_hbox.add_child(url_lbl)
+	var url_edit = LineEdit.new()
+	url_edit.name = "UrlEdit"
+	url_edit.placeholder_text = "https://xxx.supabase.co"
+	url_edit.text = _supabase_config.get("url", "")
+	url_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	url_hbox.add_child(url_edit)
+	inner_vbox.add_child(url_hbox)
+
+	var key_hbox = HBoxContainer.new()
+	var key_lbl = Label.new()
+	key_lbl.text = "Anon Key:"
+	key_lbl.custom_minimum_size.x = 70
+	key_hbox.add_child(key_lbl)
+	var key_edit = LineEdit.new()
+	key_edit.name = "KeyEdit"
+	key_edit.placeholder_text = "anon key"
+	key_edit.secret = true
+	key_edit.text = _supabase_config.get("anon_key", "")
+	key_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	key_hbox.add_child(key_edit)
+	inner_vbox.add_child(key_hbox)
+
+	var bucket_hbox = HBoxContainer.new()
+	var bucket_lbl = Label.new()
+	bucket_lbl.text = "Bucket:"
+	bucket_lbl.custom_minimum_size.x = 70
+	bucket_hbox.add_child(bucket_lbl)
+	var bucket_edit = LineEdit.new()
+	bucket_edit.name = "BucketEdit"
+	bucket_edit.text = _supabase_config.get("bucket", "songs")
+	bucket_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bucket_hbox.add_child(bucket_edit)
+	inner_vbox.add_child(bucket_hbox)
+
+	var save_cfg_btn = Button.new()
+	save_cfg_btn.text = "設定を保存"
+	save_cfg_btn.pressed.connect(_save_supabase_config.bind(url_edit, key_edit, bucket_edit))
+	inner_vbox.add_child(save_cfg_btn)
+
+	inner_vbox.add_child(HSeparator.new())
+
+	# Song ID row
+	var sid_hbox = HBoxContainer.new()
+	var sid_lbl = Label.new()
+	sid_lbl.text = "Song ID:"
+	sid_lbl.custom_minimum_size.x = 70
+	sid_hbox.add_child(sid_lbl)
+	var song_id_edit = LineEdit.new()
+	song_id_edit.name = "SongIdEdit"
+	# Default: folder name of the current file
+	song_id_edit.text = current_file_path.get_base_dir().get_file()
+	song_id_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sid_hbox.add_child(song_id_edit)
+	inner_vbox.add_child(sid_hbox)
+
+	var include_check = CheckBox.new()
+	include_check.name = "IncludeMusicCheck"
+	include_check.text = "音楽ファイルも含める"
+	include_check.button_pressed = true
+	inner_vbox.add_child(include_check)
+
+	_upload_status_label = Label.new()
+	_upload_status_label.text = ""
+	_upload_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	inner_vbox.add_child(_upload_status_label)
+
+	# Button row
+	var btn_hbox = HBoxContainer.new()
+	btn_hbox.alignment = BoxContainer.ALIGNMENT_END
+	var upload_btn = Button.new()
+	upload_btn.text = "アップロード"
+	upload_btn.pressed.connect(_do_upload.bind(song_id_edit, include_check))
+	btn_hbox.add_child(upload_btn)
+	var close_btn = Button.new()
+	close_btn.text = "閉じる"
+	close_btn.pressed.connect(func(): if _upload_dialog: _upload_dialog.hide())
+	btn_hbox.add_child(close_btn)
+	inner_vbox.add_child(btn_hbox)
+
+	_upload_dialog = Window.new()
+	_upload_dialog.title = "Supabase にアップロード"
+	_upload_dialog.size = Vector2i(480, 340)
+	_upload_dialog.transient = true
+	_upload_dialog.close_requested.connect(func(): if _upload_dialog: _upload_dialog.hide())
+	_upload_dialog.add_child(vbox)
+	get_tree().root.add_child(_upload_dialog)
+	_upload_dialog.popup_centered()
+
+func _save_supabase_config(url_edit: LineEdit, key_edit: LineEdit, bucket_edit: LineEdit) -> void:
+	var cfg = {
+		"url": url_edit.text.strip_edges(),
+		"anon_key": key_edit.text.strip_edges(),
+		"bucket": bucket_edit.text.strip_edges()
+	}
+	var f = FileAccess.open("user://supabase_config.json", FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(cfg))
+		f.close()
+	_supabase_config = cfg
+	if _upload_status_label:
+		_upload_status_label.text = "設定を保存しました"
+
+func _do_upload(song_id_edit: LineEdit, include_check: CheckBox) -> void:
+	var song_id = song_id_edit.text.strip_edges()
+	if song_id == "":
+		if _upload_status_label:
+			_upload_status_label.text = "Song ID を入力してください"
+		return
+	var include_music = include_check.button_pressed
+	var chart_json = chart_data.save_to_json()
+	var music_path = ""
+	var audio_fn = ""
+	if include_music:
+		audio_fn = chart_data.meta.get("audio", "music.ogg")
+		music_path = current_file_path.get_base_dir().path_join(audio_fn)
+
+	if _uploader and is_instance_valid(_uploader):
+		_uploader.queue_free()
+		_uploader = null
+
+	_uploader = load("res://scripts/SupabaseUploader.gd").new()
+	add_child(_uploader)
+	_uploader.upload_progress.connect(_on_upload_progress)
+	_uploader.upload_complete.connect(_on_upload_complete)
+	_uploader.upload_failed.connect(_on_upload_failed)
+	_uploader.upload(
+		_supabase_config.get("url", ""),
+		_supabase_config.get("anon_key", ""),
+		_supabase_config.get("bucket", "songs"),
+		song_id,
+		chart_json,
+		music_path,
+		audio_fn
+	)
+
+func _on_upload_progress(step: int, total: int, msg: String) -> void:
+	if _upload_status_label:
+		_upload_status_label.text = "[%d/%d] %s" % [step, total, msg]
+
+func _on_upload_complete() -> void:
+	if _upload_status_label:
+		_upload_status_label.text = "✓ アップロード完了"
+	if _uploader and is_instance_valid(_uploader):
+		_uploader.queue_free()
+		_uploader = null
+
+func _on_upload_failed(error: String) -> void:
+	if _upload_status_label:
+		_upload_status_label.text = "✗ " + error
+	if _uploader and is_instance_valid(_uploader):
+		_uploader.queue_free()
+		_uploader = null
+
+#endregion
 
 #region File Operations
 
@@ -364,6 +589,7 @@ func _on_file_menu_id_pressed(id: int) -> void:
 		1: _do_open()
 		2: _do_save()
 		3: _do_save_as()
+		5: _on_upload_pressed()
 
 func _on_edit_menu_id_pressed(id: int) -> void:
 	match id:
