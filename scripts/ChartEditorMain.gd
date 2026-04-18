@@ -228,7 +228,7 @@ func _load_supabase_config() -> void:
 	if not FileAccess.file_exists(path):
 		var f = FileAccess.open(path, FileAccess.WRITE)
 		if f:
-			f.store_string('{"url":"YOUR_SUPABASE_URL","anon_key":"YOUR_ANON_KEY","bucket":"songs"}')
+			f.store_string('{"url":"YOUR_SUPABASE_URL","anon_key":"YOUR_ANON_KEY","service_role_key":"YOUR_SERVICE_ROLE_KEY","bucket":"songs"}')
 			f.close()
 	var f = FileAccess.open(path, FileAccess.READ)
 	if f:
@@ -294,21 +294,35 @@ func _show_upload_dialog() -> void:
 	var key_hbox = HBoxContainer.new()
 	var key_lbl = Label.new()
 	key_lbl.text = "Anon Key:"
-	key_lbl.custom_minimum_size.x = 70
+	key_lbl.custom_minimum_size.x = 100
 	key_hbox.add_child(key_lbl)
 	var key_edit = LineEdit.new()
 	key_edit.name = "KeyEdit"
-	key_edit.placeholder_text = "anon key"
+	key_edit.placeholder_text = "anon key (読み取り用)"
 	key_edit.secret = true
 	key_edit.text = _supabase_config.get("anon_key", "")
 	key_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	key_hbox.add_child(key_edit)
 	inner_vbox.add_child(key_hbox)
 
+	var svc_hbox = HBoxContainer.new()
+	var svc_lbl = Label.new()
+	svc_lbl.text = "Service Key:"
+	svc_lbl.custom_minimum_size.x = 100
+	svc_hbox.add_child(svc_lbl)
+	var svc_edit = LineEdit.new()
+	svc_edit.name = "ServiceKeyEdit"
+	svc_edit.placeholder_text = "service_role key (アップロード用)"
+	svc_edit.secret = true
+	svc_edit.text = _supabase_config.get("service_role_key", "")
+	svc_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	svc_hbox.add_child(svc_edit)
+	inner_vbox.add_child(svc_hbox)
+
 	var bucket_hbox = HBoxContainer.new()
 	var bucket_lbl = Label.new()
 	bucket_lbl.text = "Bucket:"
-	bucket_lbl.custom_minimum_size.x = 70
+	bucket_lbl.custom_minimum_size.x = 100
 	bucket_hbox.add_child(bucket_lbl)
 	var bucket_edit = LineEdit.new()
 	bucket_edit.name = "BucketEdit"
@@ -319,7 +333,7 @@ func _show_upload_dialog() -> void:
 
 	var save_cfg_btn = Button.new()
 	save_cfg_btn.text = "設定を保存"
-	save_cfg_btn.pressed.connect(_save_supabase_config.bind(url_edit, key_edit, bucket_edit))
+	save_cfg_btn.pressed.connect(_save_supabase_config.bind(url_edit, key_edit, svc_edit, bucket_edit))
 	inner_vbox.add_child(save_cfg_btn)
 
 	inner_vbox.add_child(HSeparator.new())
@@ -371,10 +385,11 @@ func _show_upload_dialog() -> void:
 	get_tree().root.add_child(_upload_dialog)
 	_upload_dialog.popup_centered()
 
-func _save_supabase_config(url_edit: LineEdit, key_edit: LineEdit, bucket_edit: LineEdit) -> void:
+func _save_supabase_config(url_edit: LineEdit, key_edit: LineEdit, svc_edit: LineEdit, bucket_edit: LineEdit) -> void:
 	var cfg = {
 		"url": url_edit.text.strip_edges(),
 		"anon_key": key_edit.text.strip_edges(),
+		"service_role_key": svc_edit.text.strip_edges(),
 		"bucket": bucket_edit.text.strip_edges()
 	}
 	var f = FileAccess.open("user://supabase_config.json", FileAccess.WRITE)
@@ -410,7 +425,7 @@ func _do_upload(song_id_edit: LineEdit, include_check: CheckBox) -> void:
 	_uploader.upload_failed.connect(_on_upload_failed)
 	_uploader.upload(
 		_supabase_config.get("url", ""),
-		_supabase_config.get("anon_key", ""),
+		_supabase_config.get("service_role_key", _supabase_config.get("anon_key", "")),
 		_supabase_config.get("bucket", "songs"),
 		song_id,
 		chart_json,
