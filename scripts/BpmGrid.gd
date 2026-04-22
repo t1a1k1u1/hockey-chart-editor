@@ -19,10 +19,27 @@ func grid_interval(time: float, bpm_changes: Array, snap_division: int) -> float
 	return beat * 4.0 / snap_division
 
 func snap_time(time: float, bpm_changes: Array, snap_division: int) -> float:
-	var interval = grid_interval(time, bpm_changes, snap_division)
-	if interval <= 0.0:
+	# Find the BPM section that contains `time` and snap relative to its start,
+	# matching the anchor used by get_grid_lines.
+	if bpm_changes.is_empty():
+		var interval = 60.0 / 120.0 * 4.0 / snap_division
+		if interval <= 0.0:
+			return time
+		return round(time / interval) * interval
+	var sorted_changes = bpm_changes.duplicate()
+	sorted_changes.sort_custom(func(a, b): return a["time"] < b["time"])
+	var section_start: float = sorted_changes[0]["time"]
+	var section_bpm: float = sorted_changes[0]["bpm"]
+	for change in sorted_changes:
+		if change["time"] <= time:
+			section_start = change["time"]
+			section_bpm = change["bpm"]
+		else:
+			break
+	var sub = 60.0 / section_bpm * 4.0 / snap_division
+	if sub <= 0.0:
 		return time
-	return round(time / interval) * interval
+	return section_start + round((time - section_start) / sub) * sub
 
 func get_grid_lines(start_time: float, end_time: float, bpm_changes: Array, snap_division: int) -> Array:
 	## Returns array of {time, line_type} where line_type is "measure", "beat", or "sub"
