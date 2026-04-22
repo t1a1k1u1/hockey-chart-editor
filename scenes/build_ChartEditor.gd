@@ -76,22 +76,6 @@ func _initialize() -> void:
 
 	ctrl_bar.add_child(VSeparator.new())
 
-	var bpm_label = Label.new()
-	bpm_label.name = "BpmLabel"
-	bpm_label.text = "BPM"
-	ctrl_bar.add_child(bpm_label)
-
-	var bpm_input = SpinBox.new()
-	bpm_input.name = "BpmInput"
-	bpm_input.min_value = 1.0
-	bpm_input.max_value = 999.0
-	bpm_input.step = 0.1
-	bpm_input.value = 120.0
-	bpm_input.custom_minimum_size.x = 90
-	ctrl_bar.add_child(bpm_input)
-
-	ctrl_bar.add_child(VSeparator.new())
-
 	var snap_label = Label.new()
 	snap_label.text = "Snap"
 	ctrl_bar.add_child(snap_label)

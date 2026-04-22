@@ -39,7 +39,6 @@ var property_panel: VBoxContainer = null
 var audio_player: AudioStreamPlayer = null
 var status_label: Label = null
 var time_label: Label = null
-var bpm_input: SpinBox = null
 var snap_div_select: OptionButton = null
 
 # Dialog references
@@ -73,7 +72,6 @@ func _ready() -> void:
 			var ctrl_bar = ctrl_panel.get_node_or_null("ControlBar")
 			if ctrl_bar:
 				time_label = ctrl_bar.get_node_or_null("TimeLabel")
-				bpm_input = ctrl_bar.get_node_or_null("BpmInput")
 				snap_div_select = ctrl_bar.get_node_or_null("SnapDivSelect")
 				var play_btn = ctrl_bar.get_node_or_null("PlayButton")
 				if play_btn:
@@ -84,8 +82,6 @@ func _ready() -> void:
 				var reset_base_btn = ctrl_bar.get_node_or_null("ResetBaseButton")
 				if reset_base_btn:
 					reset_base_btn.pressed.connect(_on_reset_base_pressed)
-				if bpm_input:
-					bpm_input.value_changed.connect(_on_bpm_changed)
 				if snap_div_select:
 					snap_div_select.item_selected.connect(_on_snap_div_selected)
 				bgm_volume_slider = ctrl_bar.get_node_or_null("BgmVolumeSlider")
@@ -463,7 +459,6 @@ func _new_chart() -> void:
 	redo_stack.clear()
 	selected_notes.clear()
 	_selected_bpm_change_index = -1
-	_sync_controls_to_chart()
 	_update_title()
 	_update_status()
 	if timeline:
@@ -542,7 +537,6 @@ func _load_from_path(path: String) -> void:
 	_selected_bpm_change_index = -1
 	# Try to auto-load audio
 	_try_load_audio(path)
-	_sync_controls_to_chart()
 	_update_title()
 	_update_status()
 	if timeline:
@@ -575,11 +569,6 @@ func _try_load_audio(chart_path: String) -> void:
 
 #region UI sync
 
-func _sync_controls_to_chart() -> void:
-	if bpm_input:
-		bpm_input.set_block_signals(true)
-		bpm_input.value = chart_data.meta.get("bpm", 120.0)
-		bpm_input.set_block_signals(false)
 func _update_title() -> void:
 	var title = "Hockey Chart Editor"
 	if current_file_path != "":
@@ -621,12 +610,6 @@ func _on_view_menu_id_pressed(id: int) -> void:
 #endregion
 
 #region Signal handlers — control bar
-
-func _on_bpm_changed(value: float) -> void:
-	chart_data.meta["bpm"] = value
-	if not chart_data.meta["bpm_changes"].is_empty():
-		chart_data.meta["bpm_changes"][0]["bpm"] = value
-	_mark_dirty()
 
 func _on_snap_div_selected(index: int) -> void:
 	var snap_vals = [4, 6, 8, 12, 16, 24, 32, 48, 64]
@@ -774,10 +757,6 @@ func _on_metadata_ok() -> void:
 		chart_data.meta["bpm"] = bpm_spin.value
 		if not chart_data.meta["bpm_changes"].is_empty():
 			chart_data.meta["bpm_changes"][0]["bpm"] = bpm_spin.value
-		if bpm_input:
-			bpm_input.set_block_signals(true)
-			bpm_input.value = bpm_spin.value
-			bpm_input.set_block_signals(false)
 	if offset_spin:
 		chart_data.meta["offset"] = offset_spin.value
 
@@ -1234,10 +1213,6 @@ func _on_metadata_field_changed(field: String, value: Variant) -> void:
 	if field == "bpm":
 		if not chart_data.meta["bpm_changes"].is_empty():
 			chart_data.meta["bpm_changes"][0]["bpm"] = float(value)
-		if bpm_input:
-			bpm_input.set_block_signals(true)
-			bpm_input.value = float(value)
-			bpm_input.set_block_signals(false)
 	_mark_dirty()
 
 func _on_playback_started() -> void:
