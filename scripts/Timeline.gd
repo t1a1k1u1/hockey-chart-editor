@@ -5,6 +5,7 @@ extends Control
 signal note_clicked(note_data: Dictionary, note_index: int)
 signal note_placed(note_data: Dictionary)
 signal ruler_clicked(time: float)
+signal ruler_right_clicked(snapped_time: float)
 signal bpm_marker_clicked(bpm_change: Dictionary, change_index: int)
 signal paste_confirmed(snapped_min_time: float)
 
@@ -598,6 +599,11 @@ func _handle_mouse_button(mbe: InputEventMouseButton) -> void:
 			_handle_left_release(mbe.position)
 
 func _handle_right_click(pos: Vector2) -> void:
+	# Ruler right-click: open BPM change dialog at snapped time
+	if pos.x < RULER_WIDTH and pos.y >= TRACK_HEADER_HEIGHT:
+		var t = _snap_time(y_to_time(pos.y))
+		ruler_right_clicked.emit(t)
+		return
 	# BPM band click: delete BPM marker
 	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
 		var idx = _bpm_marker_at_y(pos.y)

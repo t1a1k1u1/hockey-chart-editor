@@ -48,6 +48,7 @@ var accept_dialog: AcceptDialog = null
 var metadata_dialog: Window = null
 var bpm_change_dialog: ConfirmationDialog = null
 var _bpm_change_spin: SpinBox = null
+var _bpm_change_pending_time: float = 0.0
 var _file_dialog_mode: String = ""   # "open", "save_as"
 
 # BPM change being edited in PropertyPanel
@@ -179,6 +180,8 @@ func _ready() -> void:
 			timeline.connect("note_clicked", _on_note_clicked)
 		if timeline.has_signal("ruler_clicked"):
 			timeline.connect("ruler_clicked", _on_ruler_clicked)
+		if timeline.has_signal("ruler_right_clicked"):
+			timeline.connect("ruler_right_clicked", _on_ruler_right_clicked)
 		if timeline.has_signal("bpm_marker_clicked"):
 			timeline.connect("bpm_marker_clicked", _on_bpm_marker_clicked)
 		if timeline.has_signal("paste_confirmed"):
@@ -918,17 +921,18 @@ func _sync_selection_to_timeline() -> void:
 #region BPM change operations
 
 func add_bpm_change_at_playhead() -> void:
-	# Show dialog to enter BPM value
+	_show_bpm_change_dialog_at(playhead_time)
+
+func _show_bpm_change_dialog_at(time: float) -> void:
 	if bpm_change_dialog == null or _bpm_change_spin == null:
 		return
-	var current_bpm = chart_data.bpm_at(playhead_time)
-	_bpm_change_spin.value = current_bpm
+	_bpm_change_pending_time = time
+	_bpm_change_spin.value = chart_data.bpm_at(time)
 	bpm_change_dialog.popup_centered()
 
 func _on_bpm_change_dialog_confirmed() -> void:
 	var new_bpm = _bpm_change_spin.value
-	# Don't add if time=0 already exists with different bpm (edit instead)
-	var new_change = {"time": playhead_time, "bpm": new_bpm}
+	var new_change = {"time": _bpm_change_pending_time, "bpm": new_bpm}
 	var action_script = load("res://scripts/UndoRedoAction.gd")
 	var action = action_script.AddBpmChangeAction.new(new_change)
 	execute_action(action)
@@ -1183,6 +1187,9 @@ func _on_ruler_clicked(time: float) -> void:
 		timeline.playback_base_time = playback_base_time
 		timeline.queue_redraw()
 	set_playhead_time(time)
+
+func _on_ruler_right_clicked(snapped_time: float) -> void:
+	_show_bpm_change_dialog_at(snapped_time)
 
 func _on_bpm_marker_clicked(bpm_change: Dictionary, change_index: int) -> void:
 	_selected_bpm_change_index = change_index
