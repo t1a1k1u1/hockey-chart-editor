@@ -7,6 +7,7 @@ signal note_placed(note_data: Dictionary)
 signal ruler_clicked(time: float)
 signal ruler_right_clicked(snapped_time: float)
 signal bpm_marker_clicked(bpm_change: Dictionary, change_index: int)
+signal time_sig_marker_clicked(ts_change: Dictionary, change_index: int)
 signal paste_confirmed(snapped_min_time: float)
 
 const RULER_WIDTH = 60.0          # Left ruler width (px)
@@ -156,8 +157,10 @@ func _draw() -> void:
 		return
 
 	var bpm_changes: Array = []
+	var time_sig_changes: Array = []
 	if chart_data != null:
 		bpm_changes = chart_data.meta.get("bpm_changes", [])
+		time_sig_changes = chart_data.meta.get("time_sig_changes", [])
 
 	# Flipped axis: bottom = early time (scroll_offset), top = later time
 	var visible_start = scroll_offset
@@ -167,7 +170,7 @@ func _draw() -> void:
 	_draw_col_backgrounds(h)
 
 	# 2. Grid lines (horizontal)
-	_draw_grid_lines(visible_start, visible_end, bpm_changes, h)
+	_draw_grid_lines(visible_start, visible_end, bpm_changes, h, time_sig_changes)
 
 	# 3. Ruler (left 60px column)
 	draw_rect(Rect2(0, TRACK_HEADER_HEIGHT, RULER_WIDTH, h - TRACK_HEADER_HEIGHT), COLOR_RULER_BG)
@@ -176,10 +179,10 @@ func _draw() -> void:
 	draw_rect(Rect2(RULER_WIDTH, TRACK_HEADER_HEIGHT, BPM_BAND_WIDTH, h - TRACK_HEADER_HEIGHT), COLOR_BPM_BAND_BG)
 
 	# 5. Ruler tick marks and labels
-	_draw_ruler(visible_start, visible_end, bpm_changes)
+	_draw_ruler(visible_start, visible_end, bpm_changes, time_sig_changes)
 
-	# 6. BPM change markers
-	_draw_bpm_markers(bpm_changes)
+	# 6. BPM and time sig change markers
+	_draw_change_markers(bpm_changes, time_sig_changes)
 
 	# 7. Track header (top 24px)
 	_draw_track_header(w)
@@ -296,10 +299,10 @@ func _draw_track_header(w: float) -> void:
 		var ty = TRACK_HEADER_HEIGHT - 5.0
 		draw_string(ThemeDB.fallback_font, Vector2(tx, ty), label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.9, 0.9, 0.9, 0.9))
 
-func _draw_grid_lines(start_time: float, end_time: float, bpm_changes: Array, h: float) -> void:
+func _draw_grid_lines(start_time: float, end_time: float, bpm_changes: Array, h: float, time_sig_changes: Array = []) -> void:
 	if bpm_changes.is_empty():
 		return
-	var lines = bpm_grid.get_grid_lines(start_time, end_time, bpm_changes, snap_division)
+	var lines = bpm_grid.get_grid_lines(start_time, end_time, bpm_changes, snap_division, time_sig_changes)
 	var content_left = CONTENT_OFFSET_X
 	var content_right = size.x
 	for line in lines:
@@ -321,7 +324,7 @@ func _draw_grid_lines(start_time: float, end_time: float, bpm_changes: Array, h:
 				lw = 1.0
 		draw_line(Vector2(content_left, y), Vector2(content_right, y), col, lw)
 
-func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array) -> void:
+func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array, time_sig_changes: Array = []) -> void:
 	if bpm_changes.is_empty():
 		# No BPM: draw 0.5s interval lines
 		var t = ceil(start_time * 2.0) / 2.0
@@ -334,7 +337,7 @@ func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array) -> void
 			t += 0.5
 		return
 
-	var lines = bpm_grid.get_grid_lines(start_time, end_time, bpm_changes, snap_division)
+	var lines = bpm_grid.get_grid_lines(start_time, end_time, bpm_changes, snap_division, time_sig_changes)
 	for line in lines:
 		var y = time_to_y(line["time"])
 		if y < TRACK_HEADER_HEIGHT:
@@ -344,7 +347,7 @@ func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array) -> void
 			draw_line(Vector2(RULER_WIDTH * 0.4, y), Vector2(RULER_WIDTH, y), Color(1, 1, 1, 0.8), 1.5)
 			var label_text: String
 			if snap_enabled:
-				var measure_num = _get_measure_number(line["time"], bpm_changes)
+				var measure_num = _get_measure_number(line["time"], bpm_changes, time_sig_changes)
 				label_text = str(measure_num)
 			else:
 				label_text = "%.1f" % line["time"]
@@ -354,34 +357,63 @@ func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array) -> void
 		else:
 			draw_line(Vector2(RULER_WIDTH * 0.8, y), Vector2(RULER_WIDTH, y), Color(1, 1, 1, 0.2), 1.0)
 
-func _get_measure_number(time: float, bpm_changes: Array) -> int:
+func _get_measure_number(time: float, bpm_changes: Array, time_sig_changes: Array = []) -> int:
 	if bpm_changes.is_empty():
 		return 1
-	var sorted_changes = bpm_changes.duplicate()
-	sorted_changes.sort_custom(func(a, b): return a["time"] < b["time"])
-	var total_beats = 0.0
-	for i in range(sorted_changes.size()):
-		var section_start = sorted_changes[i]["time"]
-		var section_end = time if i + 1 >= sorted_changes.size() else min(sorted_changes[i + 1]["time"], time)
+	var boundaries_set: Dictionary = {}
+	for bc in bpm_changes:
+		boundaries_set[bc["time"]] = true
+	for tc in time_sig_changes:
+		boundaries_set[tc["time"]] = true
+	var boundaries = boundaries_set.keys()
+	boundaries.sort()
+
+	var total_measures = 0.0
+	for i in range(boundaries.size()):
+		var section_start = boundaries[i]
+		var section_end = time if i + 1 >= boundaries.size() else min(boundaries[i + 1], time)
 		if section_start >= time:
 			break
-		var bpm = sorted_changes[i]["bpm"]
-		var beat = 60.0 / bpm
-		total_beats += (section_end - section_start) / beat
-	return int(floor(total_beats / 4.0)) + 1
+		var bpm = bpm_grid.bpm_at(section_start, bpm_changes)
+		var ts = _get_ts_at(section_start, time_sig_changes)
+		var note_dur = (60.0 / bpm) * 4.0 / ts[1]
+		var measure_dur = note_dur * ts[0]
+		if measure_dur > 0.0:
+			total_measures += (section_end - section_start) / measure_dur
+	return int(floor(total_measures)) + 1
 
-func _draw_bpm_markers(bpm_changes: Array) -> void:
+func _get_ts_at(time: float, time_sig_changes: Array) -> Array:
+	## Returns [numerator, denominator]
+	var num = 4
+	var den = 4
+	for tc in time_sig_changes:
+		if tc["time"] <= time:
+			num = tc.get("numerator", 4)
+			den = tc.get("denominator", 4)
+		else:
+			break
+	return [num, den]
+
+func _draw_change_markers(bpm_changes: Array, time_sig_changes: Array) -> void:
 	var h = size.y
+	# BPM markers (yellow)
 	for i in range(bpm_changes.size()):
 		var bc = bpm_changes[i]
 		var y = time_to_y(bc["time"])
 		if y < TRACK_HEADER_HEIGHT - 10 or y > h + 10:
 			continue
-		# Horizontal line in the BPM band
 		draw_line(Vector2(RULER_WIDTH, y), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y), Color(1.0, 0.8, 0.2, 0.9), 1.5)
-		# BPM label (rotated text approximated as small text)
 		var label = "%.0f" % bc["bpm"]
 		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y - 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1.0, 0.8, 0.2, 0.9))
+	# Time sig markers (teal)
+	for i in range(time_sig_changes.size()):
+		var tc = time_sig_changes[i]
+		var y = time_to_y(tc["time"])
+		if y < TRACK_HEADER_HEIGHT - 10 or y > h + 10:
+			continue
+		draw_line(Vector2(RULER_WIDTH, y + 3), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y + 3), Color(0.2, 0.9, 0.7, 0.9), 1.5)
+		var label = "%d/%d" % [tc.get("numerator", 4), tc.get("denominator", 4)]
+		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(0.2, 0.9, 0.7, 0.9))
 
 func _draw_notes(start_time: float, end_time: float) -> void:
 	if chart_data == null or chart_data.notes.is_empty():
@@ -488,7 +520,8 @@ func _snap_time(time: float) -> float:
 	var bpm_changes = chart_data.meta.get("bpm_changes", [])
 	if bpm_changes.is_empty():
 		return time
-	return bpm_grid.snap_time(time, bpm_changes, snap_division)
+	var time_sig_changes = chart_data.meta.get("time_sig_changes", [])
+	return bpm_grid.snap_time(time, bpm_changes, snap_division, time_sig_changes)
 
 func _grid_interval_at(time: float) -> float:
 	if chart_data == null:
@@ -536,6 +569,16 @@ func _bpm_marker_at_y(y: float) -> int:
 	for i in range(bpm_changes.size()):
 		var by = time_to_y(bpm_changes[i]["time"])
 		if abs(by - y) < 8.0:
+			return i
+	return -1
+
+func _time_sig_marker_at_y(y: float) -> int:
+	if chart_data == null:
+		return -1
+	var ts_changes = chart_data.meta.get("time_sig_changes", [])
+	for i in range(ts_changes.size()):
+		var ty = time_to_y(ts_changes[i]["time"])
+		if abs(ty - y) < 10.0:
 			return i
 	return -1
 
@@ -599,17 +642,24 @@ func _handle_mouse_button(mbe: InputEventMouseButton) -> void:
 			_handle_left_release(mbe.position)
 
 func _handle_right_click(pos: Vector2) -> void:
-	# Ruler right-click: open BPM change dialog at snapped time
+	# Ruler right-click: open add-change dialog at snapped time
 	if pos.x < RULER_WIDTH and pos.y >= TRACK_HEADER_HEIGHT:
 		var t = _snap_time(y_to_time(pos.y))
 		ruler_right_clicked.emit(t)
 		return
-	# BPM band click: delete BPM marker
+	# BPM/TimeSig band right-click: delete marker
 	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
+		var action_script = load("res://scripts/UndoRedoAction.gd")
+		# Check time sig marker first (teal markers drawn slightly lower)
+		var ts_idx = _time_sig_marker_at_y(pos.y)
+		if ts_idx > 0:
+			var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
+			var action = action_script.DeleteTimeSigChangeAction.new(ts_idx, ts_changes[ts_idx])
+			_request_action(action)
+			return
 		var idx = _bpm_marker_at_y(pos.y)
 		if idx > 0:
 			var bpm_changes = chart_data.meta.get("bpm_changes", []) if chart_data else []
-			var action_script = load("res://scripts/UndoRedoAction.gd")
 			var action = action_script.DeleteBpmChangeAction.new(idx, bpm_changes[idx])
 			_request_action(action)
 		return
@@ -695,7 +745,7 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 		ruler_clicked.emit(y_to_time(pos.y))
 		return
 
-	# BPM band click
+	# BPM/TimeSig band click
 	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
 		var idx = _bpm_marker_at_y(pos.y)
 		if idx >= 0:
@@ -705,6 +755,11 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 				_bpm_drag_active = true
 				_bpm_drag_index = idx
 				_bpm_drag_original_time = bpm_changes[idx]["time"]
+		else:
+			var ts_idx = _time_sig_marker_at_y(pos.y)
+			if ts_idx >= 0:
+				var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
+				time_sig_marker_clicked.emit(ts_changes[ts_idx], ts_idx)
 		return
 
 	# Header click: ignored

@@ -16,7 +16,8 @@ func reset() -> void:
 		"bpm": 120.0,
 		"offset": 0.0,
 		"audio": "",
-		"bpm_changes": [{"time": 0.0, "bpm": 120.0}]
+		"bpm_changes": [{"time": 0.0, "bpm": 120.0}],
+		"time_sig_changes": [{"time": 0.0, "numerator": 4, "denominator": 4}]
 	}
 	notes = []
 
@@ -33,6 +34,9 @@ func load_from_json(text: String) -> bool:
 	# Ensure bpm_changes exists
 	if not meta.has("bpm_changes") or meta["bpm_changes"].is_empty():
 		meta["bpm_changes"] = [{"time": 0.0, "bpm": meta.get("bpm", 120.0)}]
+	# Ensure time_sig_changes exists (backward compat)
+	if not meta.has("time_sig_changes") or meta["time_sig_changes"].is_empty():
+		meta["time_sig_changes"] = [{"time": 0.0, "numerator": 4, "denominator": 4}]
 	return true
 
 func save_to_json() -> String:
@@ -58,6 +62,18 @@ func bpm_at(time: float) -> float:
 		else:
 			break
 	return current_bpm
+
+func time_sig_at(time: float) -> Dictionary:
+	var changes = meta.get("time_sig_changes", [])
+	var num = 4
+	var den = 4
+	for change in changes:
+		if change["time"] <= time:
+			num = change.get("numerator", 4)
+			den = change.get("denominator", 4)
+		else:
+			break
+	return {"numerator": num, "denominator": den}
 
 func get_note_row(note: Dictionary) -> int:
 	## Returns the track row index (0-9) for a given note.

@@ -46,13 +46,21 @@ var file_dialog: FileDialog = null
 var confirm_dialog: ConfirmationDialog = null
 var accept_dialog: AcceptDialog = null
 var metadata_dialog: Window = null
-var bpm_change_dialog: ConfirmationDialog = null
-var _bpm_change_spin: SpinBox = null
-var _bpm_change_pending_time: float = 0.0
 var _file_dialog_mode: String = ""   # "open", "save_as"
 
-# BPM change being edited in PropertyPanel
+# Add-change dialog (BPM + time sig)
+var _add_change_dialog: Window = null
+var _add_change_pending_time: float = 0.0
+var _add_change_time_label: Label = null
+var _add_change_bpm_check: CheckBox = null
+var _add_change_bpm_spin: SpinBox = null
+var _add_change_ts_check: CheckBox = null
+var _add_change_denom_opt: OptionButton = null
+var _add_change_num_spin: SpinBox = null
+
+# BPM / time sig change selected in PropertyPanel
 var _selected_bpm_change_index: int = -1
+var _selected_time_sig_change_index: int = -1
 
 # Supabase upload
 var _supabase_config: Dictionary = {}
@@ -166,8 +174,8 @@ func _ready() -> void:
 		note_hit_player.stream = _generate_click_sound()
 		note_hit_player.volume_db = linear_to_db(0.7)
 
-	# Build BPM change dialog
-	_build_bpm_change_dialog()
+	# Build combined add-change dialog
+	_build_add_change_dialog()
 
 	# Connect window close request
 	get_tree().get_root().close_requested.connect(_on_window_close_requested)
@@ -186,6 +194,8 @@ func _ready() -> void:
 			timeline.connect("bpm_marker_clicked", _on_bpm_marker_clicked)
 		if timeline.has_signal("paste_confirmed"):
 			timeline.connect("paste_confirmed", _on_paste_confirmed)
+		if timeline.has_signal("time_sig_marker_clicked"):
+			timeline.connect("time_sig_marker_clicked", _on_time_sig_marker_clicked)
 		if timeline.has_method("set_action_callback"):
 			timeline.call("set_action_callback", _on_timeline_action_requested)
 		if timeline.has_method("set_move_action_callback"):
@@ -199,26 +209,154 @@ func _ready() -> void:
 			property_panel.metadata_changed.connect(_on_metadata_field_changed)
 		if property_panel.has_signal("bpm_change_edited"):
 			property_panel.bpm_change_edited.connect(_on_bpm_change_edited)
+		if property_panel.has_signal("time_sig_change_edited"):
+			property_panel.time_sig_change_edited.connect(_on_time_sig_change_edited)
 
 	_new_chart()
 	_load_supabase_config()
 
-func _build_bpm_change_dialog() -> void:
-	bpm_change_dialog = ConfirmationDialog.new()
-	bpm_change_dialog.title = "Add BPM Change"
-	var vb = VBoxContainer.new()
-	var lbl = Label.new()
-	lbl.text = "BPM value:"
-	vb.add_child(lbl)
-	_bpm_change_spin = SpinBox.new()
-	_bpm_change_spin.min_value = 1.0
-	_bpm_change_spin.max_value = 9999.0
-	_bpm_change_spin.step = 0.001
-	_bpm_change_spin.value = 120.0
-	vb.add_child(_bpm_change_spin)
-	bpm_change_dialog.add_child(vb)
-	bpm_change_dialog.confirmed.connect(_on_bpm_change_dialog_confirmed)
-	add_child(bpm_change_dialog)
+func _build_add_change_dialog() -> void:
+	_add_change_dialog = Window.new()
+	_add_change_dialog.title = "チェンジを追加"
+	_add_change_dialog.size = Vector2i(310, 270)
+	_add_change_dialog.transient = true
+	_add_change_dialog.close_requested.connect(func(): _add_change_dialog.hide())
+
+	var margin = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	margin.add_child(vbox)
+
+	_add_change_time_label = Label.new()
+	_add_change_time_label.text = "Time: 0.000"
+	vbox.add_child(_add_change_time_label)
+	vbox.add_child(HSeparator.new())
+
+	# BPM section
+	_add_change_bpm_check = CheckBox.new()
+	_add_change_bpm_check.text = "BPMを変更する"
+	_add_change_bpm_check.button_pressed = true
+	vbox.add_child(_add_change_bpm_check)
+
+	var bpm_row = HBoxContainer.new()
+	var bpm_lbl = Label.new()
+	bpm_lbl.text = "BPM:"
+	bpm_lbl.custom_minimum_size.x = 60
+	bpm_row.add_child(bpm_lbl)
+	_add_change_bpm_spin = SpinBox.new()
+	_add_change_bpm_spin.min_value = 1.0
+	_add_change_bpm_spin.max_value = 9999.0
+	_add_change_bpm_spin.step = 0.001
+	_add_change_bpm_spin.value = 120.0
+	_add_change_bpm_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bpm_row.add_child(_add_change_bpm_spin)
+	vbox.add_child(bpm_row)
+	_add_change_bpm_check.toggled.connect(func(v): _add_change_bpm_spin.editable = v)
+
+	vbox.add_child(HSeparator.new())
+
+	# Time sig section
+	_add_change_ts_check = CheckBox.new()
+	_add_change_ts_check.text = "小節長を変更する"
+	_add_change_ts_check.button_pressed = false
+	vbox.add_child(_add_change_ts_check)
+
+	var ts_row = HBoxContainer.new()
+	var ts_lbl = Label.new()
+	ts_lbl.text = "小節長:"
+	ts_lbl.custom_minimum_size.x = 60
+	ts_row.add_child(ts_lbl)
+	_add_change_num_spin = SpinBox.new()
+	_add_change_num_spin.min_value = 1
+	_add_change_num_spin.max_value = 4
+	_add_change_num_spin.step = 1
+	_add_change_num_spin.value = 4
+	_add_change_num_spin.custom_minimum_size.x = 52
+	ts_row.add_child(_add_change_num_spin)
+	var slash_lbl = Label.new()
+	slash_lbl.text = "/"
+	ts_row.add_child(slash_lbl)
+	_add_change_denom_opt = OptionButton.new()
+	_add_change_denom_opt.add_item("4", 0)
+	_add_change_denom_opt.add_item("8", 1)
+	_add_change_denom_opt.add_item("12", 2)
+	_add_change_denom_opt.add_item("16", 3)
+	_add_change_denom_opt.selected = 0
+	_add_change_denom_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ts_row.add_child(_add_change_denom_opt)
+	vbox.add_child(ts_row)
+	_add_change_denom_opt.item_selected.connect(_on_add_change_denom_selected)
+	_add_change_ts_check.toggled.connect(func(v):
+		_add_change_num_spin.editable = v
+		_add_change_denom_opt.disabled = not v
+	)
+	_add_change_num_spin.editable = false
+	_add_change_denom_opt.disabled = true
+
+	vbox.add_child(HSeparator.new())
+
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_END
+	var ok_btn = Button.new()
+	ok_btn.text = "OK"
+	ok_btn.pressed.connect(_on_add_change_dialog_ok)
+	btn_row.add_child(ok_btn)
+	var cancel_btn = Button.new()
+	cancel_btn.text = "キャンセル"
+	cancel_btn.pressed.connect(func(): _add_change_dialog.hide())
+	btn_row.add_child(cancel_btn)
+	vbox.add_child(btn_row)
+
+	_add_change_dialog.add_child(margin)
+	add_child(_add_change_dialog)
+	_add_change_dialog.visible = false
+
+func _on_add_change_denom_selected(index: int) -> void:
+	var denoms = [4, 8, 12, 16]
+	var den = denoms[index]
+	if _add_change_num_spin:
+		_add_change_num_spin.max_value = den
+		if _add_change_num_spin.value > den:
+			_add_change_num_spin.value = den
+
+func _show_add_change_dialog_at(time: float) -> void:
+	if _add_change_dialog == null:
+		return
+	_add_change_pending_time = time
+	if _add_change_time_label:
+		_add_change_time_label.text = "Time: %.3f" % time
+	if _add_change_bpm_spin:
+		_add_change_bpm_spin.value = chart_data.bpm_at(time)
+	if chart_data and _add_change_denom_opt and _add_change_num_spin:
+		var ts = chart_data.time_sig_at(time)
+		var denoms = [4, 8, 12, 16]
+		var den_idx = denoms.find(ts["denominator"])
+		if den_idx >= 0:
+			_add_change_denom_opt.selected = den_idx
+		_add_change_num_spin.max_value = ts["denominator"]
+		_add_change_num_spin.value = ts["numerator"]
+	_add_change_dialog.popup_centered()
+
+func _on_add_change_dialog_ok() -> void:
+	var action_script = load("res://scripts/UndoRedoAction.gd")
+	if _add_change_bpm_check and _add_change_bpm_check.button_pressed and _add_change_bpm_spin:
+		var new_change = {"time": _add_change_pending_time, "bpm": _add_change_bpm_spin.value}
+		execute_action(action_script.AddBpmChangeAction.new(new_change))
+	if _add_change_ts_check and _add_change_ts_check.button_pressed and _add_change_num_spin and _add_change_denom_opt:
+		var denoms = [4, 8, 12, 16]
+		var den = denoms[_add_change_denom_opt.selected]
+		var num = int(_add_change_num_spin.value)
+		var new_ts = {"time": _add_change_pending_time, "numerator": num, "denominator": den}
+		execute_action(action_script.AddTimeSigChangeAction.new(new_ts))
+	_add_change_dialog.hide()
+	if timeline:
+		timeline.queue_redraw()
 
 #region Supabase Upload
 
@@ -462,6 +600,7 @@ func _new_chart() -> void:
 	redo_stack.clear()
 	selected_notes.clear()
 	_selected_bpm_change_index = -1
+	_selected_time_sig_change_index = -1
 	_update_title()
 	_update_status()
 	if timeline:
@@ -538,6 +677,7 @@ func _load_from_path(path: String) -> void:
 	redo_stack.clear()
 	selected_notes.clear()
 	_selected_bpm_change_index = -1
+	_selected_time_sig_change_index = -1
 	# Try to auto-load audio
 	_try_load_audio(path)
 	_update_title()
@@ -921,23 +1061,7 @@ func _sync_selection_to_timeline() -> void:
 #region BPM change operations
 
 func add_bpm_change_at_playhead() -> void:
-	_show_bpm_change_dialog_at(playhead_time)
-
-func _show_bpm_change_dialog_at(time: float) -> void:
-	if bpm_change_dialog == null or _bpm_change_spin == null:
-		return
-	_bpm_change_pending_time = time
-	_bpm_change_spin.value = chart_data.bpm_at(time)
-	bpm_change_dialog.popup_centered()
-
-func _on_bpm_change_dialog_confirmed() -> void:
-	var new_bpm = _bpm_change_spin.value
-	var new_change = {"time": _bpm_change_pending_time, "bpm": new_bpm}
-	var action_script = load("res://scripts/UndoRedoAction.gd")
-	var action = action_script.AddBpmChangeAction.new(new_change)
-	execute_action(action)
-	if timeline:
-		timeline.queue_redraw()
+	_show_add_change_dialog_at(playhead_time)
 
 func _on_bpm_change_edited(change_index: int, field: String, value: Variant) -> void:
 	if chart_data == null:
@@ -1022,13 +1146,20 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif kc == KEY_DELETE:
 		if _selected_bpm_change_index > 0:
-			# Delete selected BPM change
 			var bpm_changes = chart_data.meta.get("bpm_changes", [])
 			if _selected_bpm_change_index < bpm_changes.size():
 				var action_script = load("res://scripts/UndoRedoAction.gd")
 				var action = action_script.DeleteBpmChangeAction.new(_selected_bpm_change_index, bpm_changes[_selected_bpm_change_index])
 				execute_action(action)
 				_selected_bpm_change_index = -1
+				_update_property_panel()
+		elif _selected_time_sig_change_index > 0:
+			var ts_changes = chart_data.meta.get("time_sig_changes", [])
+			if _selected_time_sig_change_index < ts_changes.size():
+				var action_script = load("res://scripts/UndoRedoAction.gd")
+				var action = action_script.DeleteTimeSigChangeAction.new(_selected_time_sig_change_index, ts_changes[_selected_time_sig_change_index])
+				execute_action(action)
+				_selected_time_sig_change_index = -1
 				_update_property_panel()
 		else:
 			delete_selected()
@@ -1172,6 +1303,7 @@ func _on_note_clicked(note_data: Dictionary, note_index: int) -> void:
 		# Cleared
 		selected_notes.clear()
 		_selected_bpm_change_index = -1
+		_selected_time_sig_change_index = -1
 	else:
 		# Read full selection from Timeline to preserve rect-select multi-selection
 		if timeline:
@@ -1189,15 +1321,36 @@ func _on_ruler_clicked(time: float) -> void:
 	set_playhead_time(time)
 
 func _on_ruler_right_clicked(snapped_time: float) -> void:
-	_show_bpm_change_dialog_at(snapped_time)
+	_show_add_change_dialog_at(snapped_time)
 
 func _on_bpm_marker_clicked(bpm_change: Dictionary, change_index: int) -> void:
 	_selected_bpm_change_index = change_index
+	_selected_time_sig_change_index = -1
 	selected_notes.clear()
 	_sync_selection_to_timeline()
 	if property_panel:
 		property_panel.show_bpm_change(bpm_change, change_index)
 	selection_changed.emit(selected_notes)
+
+func _on_time_sig_marker_clicked(ts_change: Dictionary, change_index: int) -> void:
+	_selected_time_sig_change_index = change_index
+	_selected_bpm_change_index = -1
+	selected_notes.clear()
+	_sync_selection_to_timeline()
+	if property_panel:
+		property_panel.show_time_sig_change(ts_change, change_index)
+	selection_changed.emit(selected_notes)
+
+func _on_time_sig_change_edited(change_index: int, field: String, value: Variant) -> void:
+	if chart_data == null:
+		return
+	var ts_changes = chart_data.meta.get("time_sig_changes", [])
+	if change_index < 0 or change_index >= ts_changes.size():
+		return
+	ts_changes[change_index][field] = value
+	_mark_dirty()
+	if timeline:
+		timeline.queue_redraw()
 
 func _on_timeline_action_requested(action) -> void:
 	execute_action(action)
@@ -1277,12 +1430,16 @@ func _on_audio_playhead_changed(time: float) -> void:
 func _update_property_panel() -> void:
 	if property_panel == null:
 		return
-	if selected_notes.is_empty() and _selected_bpm_change_index < 0:
+	if selected_notes.is_empty() and _selected_bpm_change_index < 0 and _selected_time_sig_change_index < 0:
 		property_panel.show_metadata()
 	elif _selected_bpm_change_index >= 0:
 		var bpm_changes = chart_data.meta.get("bpm_changes", [])
 		if _selected_bpm_change_index < bpm_changes.size():
 			property_panel.show_bpm_change(bpm_changes[_selected_bpm_change_index], _selected_bpm_change_index)
+	elif _selected_time_sig_change_index >= 0:
+		var ts_changes = chart_data.meta.get("time_sig_changes", [])
+		if _selected_time_sig_change_index < ts_changes.size():
+			property_panel.show_time_sig_change(ts_changes[_selected_time_sig_change_index], _selected_time_sig_change_index)
 	else:
 		property_panel.show_selection(selected_notes)
 

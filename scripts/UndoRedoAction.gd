@@ -189,6 +189,52 @@ class MoveBpmChangeAction extends RefCounted:
 			changes[_index]["time"] = _old_time
 
 # ---------------------------------------------------------------------------
+# AddTimeSigChangeAction
+# ---------------------------------------------------------------------------
+class AddTimeSigChangeAction extends RefCounted:
+	var _change: Dictionary
+
+	func _init(change: Dictionary) -> void:
+		_change = change.duplicate(true)
+
+	func execute(chart_data) -> void:
+		var changes = chart_data.meta.get("time_sig_changes", [])
+		changes.append(_change.duplicate(true))
+		changes.sort_custom(func(a, b): return a["time"] < b["time"])
+		chart_data.meta["time_sig_changes"] = changes
+
+	func undo(chart_data) -> void:
+		var changes = chart_data.meta.get("time_sig_changes", [])
+		for i in range(changes.size() - 1, -1, -1):
+			var c = changes[i]
+			if c.get("time", -1.0) == _change.get("time", -1.0) and \
+			   c.get("numerator", -1) == _change.get("numerator", -1) and \
+			   c.get("denominator", -1) == _change.get("denominator", -1):
+				changes.remove_at(i)
+				return
+
+# ---------------------------------------------------------------------------
+# DeleteTimeSigChangeAction
+# ---------------------------------------------------------------------------
+class DeleteTimeSigChangeAction extends RefCounted:
+	var _index: int
+	var _change: Dictionary
+
+	func _init(index: int, change: Dictionary) -> void:
+		_index = index
+		_change = change.duplicate(true)
+
+	func execute(chart_data) -> void:
+		var changes = chart_data.meta.get("time_sig_changes", [])
+		if _index >= 0 and _index < changes.size():
+			changes.remove_at(_index)
+
+	func undo(chart_data) -> void:
+		var changes = chart_data.meta.get("time_sig_changes", [])
+		var insert_pos = clamp(_index, 0, changes.size())
+		changes.insert(insert_pos, _change.duplicate(true))
+
+# ---------------------------------------------------------------------------
 # ReplaceNoteAction
 # ---------------------------------------------------------------------------
 class ReplaceNoteAction extends RefCounted:
