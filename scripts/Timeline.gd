@@ -8,6 +8,7 @@ signal ruler_clicked(time: float)
 signal ruler_right_clicked(snapped_time: float)
 signal bpm_marker_clicked(bpm_change: Dictionary, change_index: int)
 signal time_sig_marker_clicked(ts_change: Dictionary, change_index: int)
+signal speed_marker_clicked(speed_change: Dictionary, change_index: int)
 signal paste_confirmed(snapped_min_time: float)
 
 const RULER_WIDTH = 60.0          # Left ruler width (px)
@@ -158,9 +159,11 @@ func _draw() -> void:
 
 	var bpm_changes: Array = []
 	var time_sig_changes: Array = []
+	var speed_changes: Array = []
 	if chart_data != null:
 		bpm_changes = chart_data.meta.get("bpm_changes", [])
 		time_sig_changes = chart_data.meta.get("time_sig_changes", [])
+		speed_changes = chart_data.meta.get("speed_changes", [])
 
 	# Flipped axis: bottom = early time (scroll_offset), top = later time
 	var visible_start = scroll_offset
@@ -181,8 +184,8 @@ func _draw() -> void:
 	# 5. Ruler tick marks and labels
 	_draw_ruler(visible_start, visible_end, bpm_changes, time_sig_changes)
 
-	# 6. BPM and time sig change markers
-	_draw_change_markers(bpm_changes, time_sig_changes)
+	# 6. BPM, time sig, and speed change markers
+	_draw_change_markers(bpm_changes, time_sig_changes, speed_changes)
 
 	# 7. Track header (top 24px)
 	_draw_track_header(w)
@@ -394,7 +397,7 @@ func _get_ts_at(time: float, time_sig_changes: Array) -> Array:
 			break
 	return [num, den]
 
-func _draw_change_markers(bpm_changes: Array, time_sig_changes: Array) -> void:
+func _draw_change_markers(bpm_changes: Array, time_sig_changes: Array, speed_changes: Array = []) -> void:
 	var h = size.y
 	# BPM markers (yellow)
 	for i in range(bpm_changes.size()):
@@ -414,6 +417,15 @@ func _draw_change_markers(bpm_changes: Array, time_sig_changes: Array) -> void:
 		draw_line(Vector2(RULER_WIDTH, y + 3), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y + 3), Color(0.2, 0.9, 0.7, 0.9), 1.5)
 		var label = "%d/%d" % [tc.get("numerator", 4), tc.get("denominator", 4)]
 		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(0.2, 0.9, 0.7, 0.9))
+	# Speed markers (magenta)
+	for i in range(speed_changes.size()):
+		var sc = speed_changes[i]
+		var y = time_to_y(sc["time"])
+		if y < TRACK_HEADER_HEIGHT - 10 or y > h + 10:
+			continue
+		draw_line(Vector2(RULER_WIDTH, y + 6), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y + 6), Color(1.0, 0.4, 0.9, 0.9), 1.5)
+		var label = "x%.1f" % sc.get("speed", 1.0)
+		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y + 19), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1.0, 0.4, 0.9, 0.9))
 
 func _draw_notes(start_time: float, end_time: float) -> void:
 	if chart_data == null or chart_data.notes.is_empty():
@@ -582,6 +594,16 @@ func _time_sig_marker_at_y(y: float) -> int:
 			return i
 	return -1
 
+func _speed_marker_at_y(y: float) -> int:
+	if chart_data == null:
+		return -1
+	var speed_changes = chart_data.meta.get("speed_changes", [])
+	for i in range(speed_changes.size()):
+		var sy = time_to_y(speed_changes[i]["time"])
+		if abs(sy - y) < 8.0:
+			return i
+	return -1
+
 func _constrain_col_for_note(note: Dictionary, new_col: int) -> int:
 	var note_type = note.get("type", "normal")
 	if note_type in ["top", "long_top"]:
@@ -647,7 +669,7 @@ func _handle_right_click(pos: Vector2) -> void:
 		var t = _snap_time(y_to_time(pos.y))
 		ruler_right_clicked.emit(t)
 		return
-	# BPM/TimeSig band right-click: delete marker
+	# BPM/TimeSig/Speed band right-click: delete marker
 	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
 		var action_script = load("res://scripts/UndoRedoAction.gd")
 		# Check time sig marker first (teal markers drawn slightly lower)
@@ -661,6 +683,12 @@ func _handle_right_click(pos: Vector2) -> void:
 		if idx > 0:
 			var bpm_changes = chart_data.meta.get("bpm_changes", []) if chart_data else []
 			var action = action_script.DeleteBpmChangeAction.new(idx, bpm_changes[idx])
+			_request_action(action)
+			return
+		var speed_idx = _speed_marker_at_y(pos.y)
+		if speed_idx > 0:
+			var speed_changes = chart_data.meta.get("speed_changes", []) if chart_data else []
+			var action = action_script.DeleteSpeedChangeAction.new(speed_idx, speed_changes[speed_idx])
 			_request_action(action)
 		return
 	# Track area: delete note
@@ -745,7 +773,7 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 		ruler_clicked.emit(y_to_time(pos.y))
 		return
 
-	# BPM/TimeSig band click
+	# BPM/TimeSig/Speed band click
 	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
 		var idx = _bpm_marker_at_y(pos.y)
 		if idx >= 0:
@@ -760,6 +788,11 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 			if ts_idx >= 0:
 				var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
 				time_sig_marker_clicked.emit(ts_changes[ts_idx], ts_idx)
+			else:
+				var speed_idx = _speed_marker_at_y(pos.y)
+				if speed_idx >= 0:
+					var speed_changes = chart_data.meta.get("speed_changes", []) if chart_data else []
+					speed_marker_clicked.emit(speed_changes[speed_idx], speed_idx)
 		return
 
 	# Header click: ignored

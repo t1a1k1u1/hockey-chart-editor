@@ -48,7 +48,7 @@ var accept_dialog: AcceptDialog = null
 var metadata_dialog: Window = null
 var _file_dialog_mode: String = ""   # "open", "save_as"
 
-# Add-change dialog (BPM + time sig)
+# Add-change dialog (BPM + time sig + speed)
 var _add_change_dialog: Window = null
 var _add_change_pending_time: float = 0.0
 var _add_change_time_label: Label = null
@@ -57,10 +57,13 @@ var _add_change_bpm_spin: SpinBox = null
 var _add_change_ts_check: CheckBox = null
 var _add_change_denom_opt: OptionButton = null
 var _add_change_num_spin: SpinBox = null
+var _add_change_speed_check: CheckBox = null
+var _add_change_speed_spin: SpinBox = null
 
-# BPM / time sig change selected in PropertyPanel
+# BPM / time sig / speed change selected in PropertyPanel
 var _selected_bpm_change_index: int = -1
 var _selected_time_sig_change_index: int = -1
+var _selected_speed_change_index: int = -1
 
 # Supabase upload
 var _supabase_config: Dictionary = {}
@@ -196,6 +199,8 @@ func _ready() -> void:
 			timeline.connect("paste_confirmed", _on_paste_confirmed)
 		if timeline.has_signal("time_sig_marker_clicked"):
 			timeline.connect("time_sig_marker_clicked", _on_time_sig_marker_clicked)
+		if timeline.has_signal("speed_marker_clicked"):
+			timeline.connect("speed_marker_clicked", _on_speed_marker_clicked)
 		if timeline.has_method("set_action_callback"):
 			timeline.call("set_action_callback", _on_timeline_action_requested)
 		if timeline.has_method("set_move_action_callback"):
@@ -211,6 +216,8 @@ func _ready() -> void:
 			property_panel.bpm_change_edited.connect(_on_bpm_change_edited)
 		if property_panel.has_signal("time_sig_change_edited"):
 			property_panel.time_sig_change_edited.connect(_on_time_sig_change_edited)
+		if property_panel.has_signal("speed_change_edited"):
+			property_panel.speed_change_edited.connect(_on_speed_change_edited)
 
 	_new_chart()
 	_load_supabase_config()
@@ -218,7 +225,7 @@ func _ready() -> void:
 func _build_add_change_dialog() -> void:
 	_add_change_dialog = Window.new()
 	_add_change_dialog.title = "チェンジを追加"
-	_add_change_dialog.size = Vector2i(310, 270)
+	_add_change_dialog.size = Vector2i(310, 340)
 	_add_change_dialog.transient = true
 	_add_change_dialog.close_requested.connect(func(): _add_change_dialog.hide())
 
@@ -301,6 +308,30 @@ func _build_add_change_dialog() -> void:
 
 	vbox.add_child(HSeparator.new())
 
+	# Speed section
+	_add_change_speed_check = CheckBox.new()
+	_add_change_speed_check.text = "ノーツスピードを変更する"
+	_add_change_speed_check.button_pressed = false
+	vbox.add_child(_add_change_speed_check)
+
+	var speed_row = HBoxContainer.new()
+	var speed_lbl = Label.new()
+	speed_lbl.text = "Speed:"
+	speed_lbl.custom_minimum_size.x = 60
+	speed_row.add_child(speed_lbl)
+	_add_change_speed_spin = SpinBox.new()
+	_add_change_speed_spin.min_value = 0.1
+	_add_change_speed_spin.max_value = 10.0
+	_add_change_speed_spin.step = 0.1
+	_add_change_speed_spin.value = 1.0
+	_add_change_speed_spin.editable = false
+	_add_change_speed_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	speed_row.add_child(_add_change_speed_spin)
+	vbox.add_child(speed_row)
+	_add_change_speed_check.toggled.connect(func(v): _add_change_speed_spin.editable = v)
+
+	vbox.add_child(HSeparator.new())
+
 	var btn_row = HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_END
 	var ok_btn = Button.new()
@@ -333,6 +364,8 @@ func _show_add_change_dialog_at(time: float) -> void:
 		_add_change_time_label.text = "Time: %.3f" % time
 	if _add_change_bpm_spin:
 		_add_change_bpm_spin.value = chart_data.bpm_at(time)
+	if _add_change_speed_spin and chart_data:
+		_add_change_speed_spin.value = chart_data.speed_at(time)
 	if chart_data and _add_change_denom_opt and _add_change_num_spin:
 		var ts = chart_data.time_sig_at(time)
 		var denoms = [4, 8, 12, 16]
@@ -354,6 +387,9 @@ func _on_add_change_dialog_ok() -> void:
 		var num = int(_add_change_num_spin.value)
 		var new_ts = {"time": _add_change_pending_time, "numerator": num, "denominator": den}
 		execute_action(action_script.AddTimeSigChangeAction.new(new_ts))
+	if _add_change_speed_check and _add_change_speed_check.button_pressed and _add_change_speed_spin:
+		var new_sc = {"time": _add_change_pending_time, "speed": _add_change_speed_spin.value}
+		execute_action(action_script.AddSpeedChangeAction.new(new_sc))
 	_add_change_dialog.hide()
 	if timeline:
 		timeline.queue_redraw()
@@ -601,6 +637,7 @@ func _new_chart() -> void:
 	selected_notes.clear()
 	_selected_bpm_change_index = -1
 	_selected_time_sig_change_index = -1
+	_selected_speed_change_index = -1
 	_update_title()
 	_update_status()
 	if timeline:
@@ -678,6 +715,7 @@ func _load_from_path(path: String) -> void:
 	selected_notes.clear()
 	_selected_bpm_change_index = -1
 	_selected_time_sig_change_index = -1
+	_selected_speed_change_index = -1
 	# Try to auto-load audio
 	_try_load_audio(path)
 	_update_title()
@@ -1161,6 +1199,14 @@ func _input(event: InputEvent) -> void:
 				execute_action(action)
 				_selected_time_sig_change_index = -1
 				_update_property_panel()
+		elif _selected_speed_change_index > 0:
+			var speed_changes = chart_data.meta.get("speed_changes", [])
+			if _selected_speed_change_index < speed_changes.size():
+				var action_script = load("res://scripts/UndoRedoAction.gd")
+				var action = action_script.DeleteSpeedChangeAction.new(_selected_speed_change_index, speed_changes[_selected_speed_change_index])
+				execute_action(action)
+				_selected_speed_change_index = -1
+				_update_property_panel()
 		else:
 			delete_selected()
 		get_viewport().set_input_as_handled()
@@ -1352,6 +1398,27 @@ func _on_time_sig_change_edited(change_index: int, field: String, value: Variant
 	if timeline:
 		timeline.queue_redraw()
 
+func _on_speed_marker_clicked(speed_change: Dictionary, change_index: int) -> void:
+	_selected_speed_change_index = change_index
+	_selected_bpm_change_index = -1
+	_selected_time_sig_change_index = -1
+	selected_notes.clear()
+	_sync_selection_to_timeline()
+	if property_panel:
+		property_panel.show_speed_change(speed_change, change_index)
+	selection_changed.emit(selected_notes)
+
+func _on_speed_change_edited(change_index: int, field: String, value: Variant) -> void:
+	if chart_data == null:
+		return
+	var speed_changes = chart_data.meta.get("speed_changes", [])
+	if change_index < 0 or change_index >= speed_changes.size():
+		return
+	speed_changes[change_index][field] = value
+	_mark_dirty()
+	if timeline:
+		timeline.queue_redraw()
+
 func _on_timeline_action_requested(action) -> void:
 	execute_action(action)
 
@@ -1430,7 +1497,7 @@ func _on_audio_playhead_changed(time: float) -> void:
 func _update_property_panel() -> void:
 	if property_panel == null:
 		return
-	if selected_notes.is_empty() and _selected_bpm_change_index < 0 and _selected_time_sig_change_index < 0:
+	if selected_notes.is_empty() and _selected_bpm_change_index < 0 and _selected_time_sig_change_index < 0 and _selected_speed_change_index < 0:
 		property_panel.show_metadata()
 	elif _selected_bpm_change_index >= 0:
 		var bpm_changes = chart_data.meta.get("bpm_changes", [])
@@ -1440,6 +1507,10 @@ func _update_property_panel() -> void:
 		var ts_changes = chart_data.meta.get("time_sig_changes", [])
 		if _selected_time_sig_change_index < ts_changes.size():
 			property_panel.show_time_sig_change(ts_changes[_selected_time_sig_change_index], _selected_time_sig_change_index)
+	elif _selected_speed_change_index >= 0:
+		var speed_changes = chart_data.meta.get("speed_changes", [])
+		if _selected_speed_change_index < speed_changes.size():
+			property_panel.show_speed_change(speed_changes[_selected_speed_change_index], _selected_speed_change_index)
 	else:
 		property_panel.show_selection(selected_notes)
 

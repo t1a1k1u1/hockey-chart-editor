@@ -6,6 +6,7 @@ signal property_changed(note_index: int, field: String, value: Variant)
 signal metadata_changed(field: String, value: Variant)
 signal bpm_change_edited(change_index: int, field: String, value: Variant)
 signal time_sig_change_edited(change_index: int, field: String, value: Variant)
+signal speed_change_edited(change_index: int, field: String, value: Variant)
 
 var _selected_notes: Array = []
 var _chart_data = null
@@ -13,6 +14,8 @@ var _selected_bpm_change_index: int = -1
 var _selected_bpm_change: Dictionary = {}
 var _selected_time_sig_change_index: int = -1
 var _selected_ts_change: Dictionary = {}
+var _selected_speed_change_index: int = -1
+var _selected_speed_change: Dictionary = {}
 var _building: bool = false  # Guard against signal re-entrancy
 
 func _ready() -> void:
@@ -31,12 +34,14 @@ func show_metadata() -> void:
 	_selected_notes = []
 	_selected_bpm_change_index = -1
 	_selected_time_sig_change_index = -1
+	_selected_speed_change_index = -1
 	_rebuild_ui()
 
 func show_bpm_change(bpm_change: Dictionary, change_index: int) -> void:
 	_selected_notes = []
 	_selected_bpm_change_index = change_index
 	_selected_time_sig_change_index = -1
+	_selected_speed_change_index = -1
 	_selected_bpm_change = bpm_change.duplicate(true)
 	_rebuild_ui()
 
@@ -44,7 +49,16 @@ func show_time_sig_change(ts_change: Dictionary, change_index: int) -> void:
 	_selected_notes = []
 	_selected_bpm_change_index = -1
 	_selected_time_sig_change_index = change_index
+	_selected_speed_change_index = -1
 	_selected_ts_change = ts_change.duplicate(true)
+	_rebuild_ui()
+
+func show_speed_change(speed_change: Dictionary, change_index: int) -> void:
+	_selected_notes = []
+	_selected_bpm_change_index = -1
+	_selected_time_sig_change_index = -1
+	_selected_speed_change_index = change_index
+	_selected_speed_change = speed_change.duplicate(true)
 	_rebuild_ui()
 
 func _rebuild_ui() -> void:
@@ -52,12 +66,14 @@ func _rebuild_ui() -> void:
 	for child in get_children():
 		child.queue_free()
 
-	if _selected_notes.is_empty() and _selected_bpm_change_index < 0 and _selected_time_sig_change_index < 0:
+	if _selected_notes.is_empty() and _selected_bpm_change_index < 0 and _selected_time_sig_change_index < 0 and _selected_speed_change_index < 0:
 		_build_metadata_ui()
 	elif _selected_bpm_change_index >= 0:
 		_build_bpm_change_ui()
 	elif _selected_time_sig_change_index >= 0:
 		_build_time_sig_change_ui()
+	elif _selected_speed_change_index >= 0:
+		_build_speed_change_ui()
 	else:
 		_build_note_properties_ui()
 
@@ -246,6 +262,44 @@ func _build_time_sig_change_ui() -> void:
 		add_child(hint)
 
 # -----------------------------------------------------------------------
+# Speed change section
+# -----------------------------------------------------------------------
+func _build_speed_change_ui() -> void:
+	_build_section_label("ノーツスピードチェンジ")
+	if _chart_data == null:
+		return
+	var speed_changes = _chart_data.meta.get("speed_changes", [])
+	if _selected_speed_change_index >= speed_changes.size():
+		return
+	var sc = speed_changes[_selected_speed_change_index]
+
+	if _selected_speed_change_index == 0:
+		_build_row("Time:", _make_disabled_label("0.000 (固定)"))
+	else:
+		var time_spin = SpinBox.new()
+		time_spin.min_value = 0.001
+		time_spin.max_value = 9999.0
+		time_spin.step = 0.001
+		time_spin.value = sc.get("time", 0.0)
+		time_spin.value_changed.connect(_on_speed_change_field_changed.bind(_selected_speed_change_index, "time"))
+		_build_row("Time:", time_spin)
+
+	var speed_spin = SpinBox.new()
+	speed_spin.min_value = 0.1
+	speed_spin.max_value = 10.0
+	speed_spin.step = 0.1
+	speed_spin.value = sc.get("speed", 1.0)
+	speed_spin.value_changed.connect(_on_speed_change_field_changed.bind(_selected_speed_change_index, "speed"))
+	_build_row("Speed:", speed_spin)
+
+	if _selected_speed_change_index > 0:
+		var hint = Label.new()
+		hint.text = "(Delete キーで削除)"
+		hint.modulate = Color(0.6, 0.6, 0.6)
+		hint.add_theme_font_size_override("font_size", 10)
+		add_child(hint)
+
+# -----------------------------------------------------------------------
 # Note properties section
 # -----------------------------------------------------------------------
 func _build_note_properties_ui() -> void:
@@ -404,3 +458,8 @@ func _on_ts_denom_selected(index: int, change_index: int) -> void:
 		return
 	var denoms = [4, 8, 12, 16]
 	time_sig_change_edited.emit(change_index, "denominator", denoms[index])
+
+func _on_speed_change_field_changed(value: float, change_index: int, field: String) -> void:
+	if _building:
+		return
+	speed_change_edited.emit(change_index, field, value)

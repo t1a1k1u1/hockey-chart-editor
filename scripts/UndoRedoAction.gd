@@ -235,6 +235,74 @@ class DeleteTimeSigChangeAction extends RefCounted:
 		changes.insert(insert_pos, _change.duplicate(true))
 
 # ---------------------------------------------------------------------------
+# AddSpeedChangeAction
+# ---------------------------------------------------------------------------
+class AddSpeedChangeAction extends RefCounted:
+	var _change: Dictionary
+
+	func _init(change: Dictionary) -> void:
+		_change = change.duplicate(true)
+
+	func execute(chart_data) -> void:
+		var changes = chart_data.meta.get("speed_changes", [])
+		changes.append(_change.duplicate(true))
+		changes.sort_custom(func(a, b): return a["time"] < b["time"])
+		chart_data.meta["speed_changes"] = changes
+
+	func undo(chart_data) -> void:
+		var changes = chart_data.meta.get("speed_changes", [])
+		for i in range(changes.size() - 1, -1, -1):
+			var c = changes[i]
+			if c.get("time", -1.0) == _change.get("time", -1.0) and c.get("speed", -1.0) == _change.get("speed", -1.0):
+				changes.remove_at(i)
+				return
+		chart_data.meta["speed_changes"] = changes
+
+# ---------------------------------------------------------------------------
+# DeleteSpeedChangeAction
+# ---------------------------------------------------------------------------
+class DeleteSpeedChangeAction extends RefCounted:
+	var _index: int
+	var _change: Dictionary
+
+	func _init(index: int, change: Dictionary) -> void:
+		_index = index
+		_change = change.duplicate(true)
+
+	func execute(chart_data) -> void:
+		var changes = chart_data.meta.get("speed_changes", [])
+		if _index >= 0 and _index < changes.size():
+			changes.remove_at(_index)
+
+	func undo(chart_data) -> void:
+		var changes = chart_data.meta.get("speed_changes", [])
+		var insert_pos = clamp(_index, 0, changes.size())
+		changes.insert(insert_pos, _change.duplicate(true))
+
+# ---------------------------------------------------------------------------
+# MoveSpeedChangeAction
+# ---------------------------------------------------------------------------
+class MoveSpeedChangeAction extends RefCounted:
+	var _index: int
+	var _old_time: float
+	var _new_time: float
+
+	func _init(index: int, old_time: float, new_time: float) -> void:
+		_index = index
+		_old_time = old_time
+		_new_time = new_time
+
+	func execute(chart_data) -> void:
+		var changes = chart_data.meta.get("speed_changes", [])
+		if _index >= 0 and _index < changes.size():
+			changes[_index]["time"] = _new_time
+
+	func undo(chart_data) -> void:
+		var changes = chart_data.meta.get("speed_changes", [])
+		if _index >= 0 and _index < changes.size():
+			changes[_index]["time"] = _old_time
+
+# ---------------------------------------------------------------------------
 # ReplaceNoteAction
 # ---------------------------------------------------------------------------
 class ReplaceNoteAction extends RefCounted:
