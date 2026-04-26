@@ -5,18 +5,18 @@
 [ext_resource type="Script" path="res://scripts/PropertyPanel.gd" id="3_2pvn5"]
 [ext_resource type="Script" path="res://scripts/AudioPlayer.gd" id="4_s83rv"]
 
-[node name="ChartEditor" type="Node" unique_id=974646301]
+[node name="ChartEditor" type="Node" unique_id=2105775261]
 script = ExtResource("1_2vooy")
 
-[node name="RootVBox" type="VBoxContainer" parent="." unique_id=182582648]
+[node name="RootVBox" type="VBoxContainer" parent="." unique_id=1271460289]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="MenuBar" type="MenuBar" parent="RootVBox" unique_id=1602964483]
+[node name="MenuBar" type="MenuBar" parent="RootVBox" unique_id=99791909]
 layout_mode = 2
 
-[node name="FileMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=2094014527]
+[node name="FileMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1172065648]
 item_count = 8
 item_0/text = "New"
 item_0/id = 0
@@ -36,52 +36,52 @@ item_7/text = "Supabase から読み込む"
 item_7/id = 6
 metadata/_menu_name = "File"
 
-[node name="EditMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=617056340]
+[node name="EditMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=2096979521]
 item_count = 1
 item_0/text = "Metadata..."
 item_0/id = 0
 metadata/_menu_name = "Edit"
 
-[node name="ViewMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1063527784]
+[node name="ViewMenu" type="PopupMenu" parent="RootVBox/MenuBar" unique_id=1803595305]
 item_count = 1
 item_0/text = "Zoom Reset"
 item_0/id = 0
 metadata/_menu_name = "View"
 
-[node name="ControlBarPanel" type="PanelContainer" parent="RootVBox" unique_id=1301425596]
+[node name="ControlBarPanel" type="PanelContainer" parent="RootVBox" unique_id=1668363987]
 layout_mode = 2
 
-[node name="ControlBar" type="HBoxContainer" parent="RootVBox/ControlBarPanel" unique_id=60799129]
+[node name="ControlBar" type="HBoxContainer" parent="RootVBox/ControlBarPanel" unique_id=588806092]
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2087174314]
+[node name="PlayButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1440503341]
 custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 text = "▶"
 
-[node name="StopButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=779216896]
+[node name="StopButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=998054929]
 custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 text = "■"
 
-[node name="ResetBaseButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1827492317]
+[node name="ResetBaseButton" type="Button" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1606090542]
 custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 text = "⏮"
 
-[node name="TimeLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1028820251]
+[node name="TimeLabel" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1910892552]
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 text = "0:00.000"
 
-[node name="@VSeparator@23" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=176908626]
+[node name="@VSeparator@23" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=709292930]
 layout_mode = 2
 
-[node name="@Label@24" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=421596056]
+[node name="@Label@24" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=118253064]
 layout_mode = 2
 text = "Snap"
 
-[node name="SnapDivSelect" type="OptionButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=897064100]
+[node name="SnapDivSelect" type="OptionButton" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=925412068]
 layout_mode = 2
 selected = 4
 item_count = 9
@@ -104,14 +104,14 @@ popup/item_7/id = 7
 popup/item_8/text = "64"
 popup/item_8/id = 8
 
-[node name="@VSeparator@33" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2090013779]
+[node name="@VSeparator@33" type="VSeparator" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=2017844304]
 layout_mode = 2
 
-[node name="@Label@34" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1186999107]
+[node name="@Label@34" type="Label" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=330952769]
 layout_mode = 2
 text = "BGM"
 
-[node name="BgmVolumeSlider" type="HSlider" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=1693712068]
+[node name="BgmVolumeSlider" type="HSlider" parent="RootVBox/ControlBarPanel/ControlBar" unique_id=643631167]
 custom_minimum_size = Vector2(80, 0)
 layout_mode = 2
 size_flags_vertical = 4
@@ -119,74 +119,74 @@ max_value = 1.0
 step = 0.01
 value = 0.5
 
-[node name="MainArea" type="HBoxContainer" parent="RootVBox" unique_id=1988599527]
+[node name="MainArea" type="HBoxContainer" parent="RootVBox" unique_id=894922285]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="TimelineArea" type="HBoxContainer" parent="RootVBox/MainArea" unique_id=1307579931]
+[node name="TimelineArea" type="HBoxContainer" parent="RootVBox/MainArea" unique_id=222920551]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="Timeline" type="Control" parent="RootVBox/MainArea/TimelineArea" unique_id=409299106]
+[node name="Timeline" type="Control" parent="RootVBox/MainArea/TimelineArea" unique_id=1877783105]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("2_0874k")
 
-[node name="VScrollBar" type="VScrollBar" parent="RootVBox/MainArea/TimelineArea" unique_id=1527264013]
+[node name="VScrollBar" type="VScrollBar" parent="RootVBox/MainArea/TimelineArea" unique_id=1781730795]
 custom_minimum_size = Vector2(16, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PropertyPanelContainer" type="PanelContainer" parent="RootVBox/MainArea" unique_id=1200317780]
-custom_minimum_size = Vector2(240, 0)
+[node name="PropertyPanelContainer" type="PanelContainer" parent="RootVBox/MainArea" unique_id=1365881059]
+custom_minimum_size = Vector2(283, 0)
 layout_mode = 2
 
-[node name="PropertyPanel" type="ScrollContainer" parent="RootVBox/MainArea/PropertyPanelContainer" unique_id=1797263772]
+[node name="PropertyPanel" type="ScrollContainer" parent="RootVBox/MainArea/PropertyPanelContainer" unique_id=1241207117]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PropertyPanelContent" type="VBoxContainer" parent="RootVBox/MainArea/PropertyPanelContainer/PropertyPanel" unique_id=230897867]
+[node name="PropertyPanelContent" type="VBoxContainer" parent="RootVBox/MainArea/PropertyPanelContainer/PropertyPanel" unique_id=103814036]
 layout_mode = 2
 size_flags_horizontal = 3
 script = ExtResource("3_2pvn5")
 
-[node name="StatusBar" type="PanelContainer" parent="RootVBox" unique_id=719836102]
+[node name="StatusBar" type="PanelContainer" parent="RootVBox" unique_id=722459099]
 layout_mode = 2
 
-[node name="StatusLabel" type="Label" parent="RootVBox/StatusBar" unique_id=1042492400]
+[node name="StatusLabel" type="Label" parent="RootVBox/StatusBar" unique_id=1060767615]
 layout_mode = 2
 text = "Ready — No file loaded"
 
-[node name="FileDialog" type="FileDialog" parent="." unique_id=194358256]
+[node name="FileDialog" type="FileDialog" parent="." unique_id=1514411509]
 size = Vector2i(900, 600)
 access = 2
 filters = PackedStringArray("*.json ; Chart JSON")
 
-[node name="ConfirmationDialog" type="ConfirmationDialog" parent="." unique_id=1977021964]
+[node name="ConfirmationDialog" type="ConfirmationDialog" parent="." unique_id=614639054]
 dialog_text = "保存しますか？
 Save changes before continuing?"
 
-[node name="AcceptDialog" type="AcceptDialog" parent="." unique_id=553896476]
+[node name="AcceptDialog" type="AcceptDialog" parent="." unique_id=180169448]
 
-[node name="MetadataDialog" type="Window" parent="." unique_id=1567455550]
+[node name="MetadataDialog" type="Window" parent="." unique_id=1013886473]
 title = "Edit Metadata"
 size = Vector2i(400, 320)
 visible = false
 transient = true
 exclusive = true
 
-[node name="MetaVBox" type="VBoxContainer" parent="MetadataDialog" unique_id=1351820015]
+[node name="MetaVBox" type="VBoxContainer" parent="MetadataDialog" unique_id=1062710017]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_constants/separation = 6
 
-[node name="MetaMargin" type="MarginContainer" parent="MetadataDialog/MetaVBox" unique_id=583616176]
+[node name="MetaMargin" type="MarginContainer" parent="MetadataDialog/MetaVBox" unique_id=124630622]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 12
@@ -194,102 +194,102 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 
-[node name="MetaForm" type="VBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin" unique_id=1432328384]
+[node name="MetaForm" type="VBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin" unique_id=2071344315]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="@HBoxContainer@192" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1821106406]
+[node name="@HBoxContainer@192" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=851659289]
 layout_mode = 2
 
-[node name="@Label@191" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@192" unique_id=174213856]
+[node name="@Label@191" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@192" unique_id=541135032]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Title:"
 
-[node name="MetaTitleEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@192" unique_id=122876624]
+[node name="MetaTitleEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@192" unique_id=402907774]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="@HBoxContainer@194" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=883768543]
+[node name="@HBoxContainer@194" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=513925628]
 layout_mode = 2
 
-[node name="@Label@193" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@194" unique_id=1796502245]
+[node name="@Label@193" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@194" unique_id=1959798903]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Artist:"
 
-[node name="MetaArtistEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@194" unique_id=491164206]
+[node name="MetaArtistEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@194" unique_id=335779078]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="@HBoxContainer@196" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=89185726]
+[node name="@HBoxContainer@196" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=790271835]
 layout_mode = 2
 
-[node name="@Label@195" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@196" unique_id=14595241]
+[node name="@Label@195" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@196" unique_id=1002974889]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Audio:"
 
-[node name="MetaAudioEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@196" unique_id=1277108345]
+[node name="MetaAudioEdit" type="LineEdit" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@196" unique_id=119582078]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="@HBoxContainer@200" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1310949450]
+[node name="@HBoxContainer@200" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=574053131]
 layout_mode = 2
 
-[node name="@Label@197" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@200" unique_id=1134062004]
+[node name="@Label@197" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@200" unique_id=940984280]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Level:"
 
-[node name="MetaLevelSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@200" unique_id=1021590417]
+[node name="MetaLevelSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@200" unique_id=1603141831]
 layout_mode = 2
 min_value = 1.0
 max_value = 99.0
 value = 1.0
 
-[node name="@HBoxContainer@204" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1509441775]
+[node name="@HBoxContainer@204" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1620410478]
 layout_mode = 2
 
-[node name="@Label@201" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@204" unique_id=1544050169]
+[node name="@Label@201" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@204" unique_id=550877409]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "BPM:"
 
-[node name="MetaBpmSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@204" unique_id=1941922201]
+[node name="MetaBpmSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@204" unique_id=2129945994]
 layout_mode = 2
 min_value = 1.0
 max_value = 999.0
 step = 0.1
 value = 120.0
 
-[node name="@HBoxContainer@208" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=919191997]
+[node name="@HBoxContainer@208" type="HBoxContainer" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm" unique_id=1245123164]
 layout_mode = 2
 
-[node name="@Label@205" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@208" unique_id=1007274559]
+[node name="@Label@205" type="Label" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@208" unique_id=1354658973]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 text = "Offset:"
 
-[node name="MetaOffsetSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@208" unique_id=326043427]
+[node name="MetaOffsetSpin" type="SpinBox" parent="MetadataDialog/MetaVBox/MetaMargin/MetaForm/@HBoxContainer@208" unique_id=2102131786]
 layout_mode = 2
 min_value = -10.0
 max_value = 10.0
 step = 0.001
 
-[node name="MetaBtnRow" type="HBoxContainer" parent="MetadataDialog/MetaVBox" unique_id=1957205309]
+[node name="MetaBtnRow" type="HBoxContainer" parent="MetadataDialog/MetaVBox" unique_id=1005025600]
 layout_mode = 2
 alignment = 2
 
-[node name="MetaOkBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=224531803]
+[node name="MetaOkBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=1734489726]
 layout_mode = 2
 text = "OK"
 
-[node name="MetaCancelBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=1119354534]
+[node name="MetaCancelBtn" type="Button" parent="MetadataDialog/MetaVBox/MetaBtnRow" unique_id=654273241]
 layout_mode = 2
 text = "Cancel"
 
-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=791708913]
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=627195116]
 script = ExtResource("4_s83rv")
 
-[node name="NoteHitPlayer" type="AudioStreamPlayer" parent="." unique_id=820055964]
+[node name="NoteHitPlayer" type="AudioStreamPlayer" parent="." unique_id=566745231]

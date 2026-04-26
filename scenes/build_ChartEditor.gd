@@ -136,7 +136,7 @@ func _initialize() -> void:
 	# Property Panel (240px)
 	var prop_panel = PanelContainer.new()
 	prop_panel.name = "PropertyPanelContainer"
-	prop_panel.custom_minimum_size.x = 240
+	prop_panel.custom_minimum_size.x = 283
 	main_hbox.add_child(prop_panel)
 
 	var prop_scroll = ScrollContainer.new()
