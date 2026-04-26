@@ -11,10 +11,12 @@ signal time_sig_marker_clicked(ts_change: Dictionary, change_index: int)
 signal speed_marker_clicked(speed_change: Dictionary, change_index: int)
 signal paste_confirmed(snapped_min_time: float)
 
-const RULER_WIDTH = 60.0          # Left ruler width (px)
-const BPM_BAND_WIDTH = 16.0       # BPM change band width (px)
-const TRACK_HEADER_HEIGHT = 24.0  # Top track header height (px)
-const CONTENT_OFFSET_X = RULER_WIDTH + BPM_BAND_WIDTH  # 76px
+const RULER_WIDTH = 60.0                  # Left ruler width (px)
+const BPM_BAND_WIDTH = 30.0               # BPM change band width (px)
+const TIME_SIG_BAND_WIDTH = 30.0          # Time signature band width (px)
+const SPEED_BAND_WIDTH = 30.0             # Notes speed band width (px)
+const TRACK_HEADER_HEIGHT = 24.0          # Top track header height (px)
+const CONTENT_OFFSET_X = RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH + SPEED_BAND_WIDTH  # 150px
 const DEFAULT_PPS = 200.0         # pixels per second (vertical)
 const NUM_COLS = 10               # columns: TOP0,TOP1,TOP2,L0..L6
 
@@ -178,8 +180,10 @@ func _draw() -> void:
 	# 3. Ruler (left 60px column)
 	draw_rect(Rect2(0, TRACK_HEADER_HEIGHT, RULER_WIDTH, h - TRACK_HEADER_HEIGHT), COLOR_RULER_BG)
 
-	# 4. BPM change band (16px column next to ruler)
+	# 4. BPM / TimeSig / Speed change bands
 	draw_rect(Rect2(RULER_WIDTH, TRACK_HEADER_HEIGHT, BPM_BAND_WIDTH, h - TRACK_HEADER_HEIGHT), COLOR_BPM_BAND_BG)
+	draw_rect(Rect2(RULER_WIDTH + BPM_BAND_WIDTH, TRACK_HEADER_HEIGHT, TIME_SIG_BAND_WIDTH, h - TRACK_HEADER_HEIGHT), Color(0.05, 0.07, 0.07, 1.0))
+	draw_rect(Rect2(RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH, TRACK_HEADER_HEIGHT, SPEED_BAND_WIDTH, h - TRACK_HEADER_HEIGHT), Color(0.07, 0.05, 0.07, 1.0))
 
 	# 5. Ruler tick marks and labels
 	_draw_ruler(visible_start, visible_end, bpm_changes, time_sig_changes)
@@ -281,6 +285,18 @@ func _draw_track_header(w: float) -> void:
 	draw_rect(Rect2(0, 0, w, TRACK_HEADER_HEIGHT), COLOR_HEADER_BG)
 	# Ruler / BPM band area in header
 	draw_rect(Rect2(0, 0, CONTENT_OFFSET_X, TRACK_HEADER_HEIGHT), Color(0.05, 0.05, 0.07, 1.0))
+	# Band labels
+	var label_y = TRACK_HEADER_HEIGHT - 5.0
+	var font = ThemeDB.fallback_font
+	var _bpm_lbl = "BPM"
+	var _bpm_lbl_w = font.get_string_size(_bpm_lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	draw_string(font, Vector2(RULER_WIDTH + (BPM_BAND_WIDTH - _bpm_lbl_w) * 0.5, label_y), _bpm_lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.8, 0.2, 0.85))
+	var _ts_lbl = "T.S."
+	var _ts_lbl_w = font.get_string_size(_ts_lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	draw_string(font, Vector2(RULER_WIDTH + BPM_BAND_WIDTH + (TIME_SIG_BAND_WIDTH - _ts_lbl_w) * 0.5, label_y), _ts_lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.2, 0.9, 0.7, 0.85))
+	var _spd_lbl = "SPD"
+	var _spd_lbl_w = font.get_string_size(_spd_lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	draw_string(font, Vector2(RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH + (SPEED_BAND_WIDTH - _spd_lbl_w) * 0.5, label_y), _spd_lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.4, 0.9, 0.85))
 	var cw = get_col_width()
 	var col_labels = ["TOP 0", "TOP 1", "TOP 2", "L 0", "L 1", "L 2", "L 3", "L 4", "L 5", "L 6"]
 	for col in range(NUM_COLS):
@@ -296,7 +312,7 @@ func _draw_track_header(w: float) -> void:
 		draw_rect(Rect2(cx, 0, cw, TRACK_HEADER_HEIGHT), color)
 		# Label
 		var label = col_labels[col]
-		var font_size = 9
+		var font_size = 12
 		var text_width = ThemeDB.fallback_font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		var tx = cx_mid - text_width * 0.5
 		var ty = TRACK_HEADER_HEIGHT - 5.0
@@ -336,7 +352,7 @@ func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array, time_si
 			if y >= TRACK_HEADER_HEIGHT:
 				draw_line(Vector2(RULER_WIDTH * 0.5, y), Vector2(RULER_WIDTH, y), Color(1, 1, 1, 0.6), 1.0)
 				var label = "%.1f" % t
-				draw_string(ThemeDB.fallback_font, Vector2(2, y - 2), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1, 0.8))
+				draw_string(ThemeDB.fallback_font, Vector2(2, y - 2), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.8))
 			t += 0.5
 		return
 
@@ -354,7 +370,7 @@ func _draw_ruler(start_time: float, end_time: float, bpm_changes: Array, time_si
 				label_text = str(measure_num)
 			else:
 				label_text = "%.1f" % line["time"]
-			draw_string(ThemeDB.fallback_font, Vector2(2, y - 2), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(1, 1, 1, 0.85))
+			draw_string(ThemeDB.fallback_font, Vector2(2, y - 2), label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.85))
 		elif lt == "beat":
 			draw_line(Vector2(RULER_WIDTH * 0.6, y), Vector2(RULER_WIDTH, y), Color(1, 1, 1, 0.5), 1.0)
 		else:
@@ -399,33 +415,56 @@ func _get_ts_at(time: float, time_sig_changes: Array) -> Array:
 
 func _draw_change_markers(bpm_changes: Array, time_sig_changes: Array, speed_changes: Array = []) -> void:
 	var h = size.y
-	# BPM markers (yellow)
+	var font = ThemeDB.fallback_font
+	var bpm_x0 = RULER_WIDTH
+	var bpm_x1 = RULER_WIDTH + BPM_BAND_WIDTH
+	var ts_x0 = bpm_x1
+	var ts_x1 = bpm_x1 + TIME_SIG_BAND_WIDTH
+	var spd_x0 = ts_x1
+	var spd_x1 = CONTENT_OFFSET_X
+	const FONT_SIZE = 14
+	var ascent = font.get_ascent(FONT_SIZE)
+	var descent = font.get_descent(FONT_SIZE)
+	var baseline_offset = (ascent - descent) * 0.5
+
+	# BPM markers (yellow) — rotated -90° in BPM band, left-aligned from marker line
+	var bpm_cx = RULER_WIDTH + BPM_BAND_WIDTH * 0.5
 	for i in range(bpm_changes.size()):
 		var bc = bpm_changes[i]
 		var y = time_to_y(bc["time"])
 		if y < TRACK_HEADER_HEIGHT - 10 or y > h + 10:
 			continue
-		draw_line(Vector2(RULER_WIDTH, y), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y), Color(1.0, 0.8, 0.2, 0.9), 1.5)
-		var label = "%.0f" % bc["bpm"]
-		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y - 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1.0, 0.8, 0.2, 0.9))
-	# Time sig markers (teal)
+		draw_line(Vector2(bpm_x0, y), Vector2(bpm_x1, y), Color(1.0, 0.8, 0.2, 0.9), 1.5)
+		var label = "%.1f" % bc["bpm"]
+		draw_set_transform(Vector2(bpm_cx, y), -PI * 0.5, Vector2.ONE)
+		draw_string(font, Vector2(2, baseline_offset), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(1.0, 0.8, 0.2, 1.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# Time sig markers (teal) — rotated -90° in TS band, left-aligned from marker line
+	var ts_cx = RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH * 0.5
 	for i in range(time_sig_changes.size()):
 		var tc = time_sig_changes[i]
 		var y = time_to_y(tc["time"])
 		if y < TRACK_HEADER_HEIGHT - 10 or y > h + 10:
 			continue
-		draw_line(Vector2(RULER_WIDTH, y + 3), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y + 3), Color(0.2, 0.9, 0.7, 0.9), 1.5)
+		draw_line(Vector2(ts_x0, y), Vector2(ts_x1, y), Color(0.2, 0.9, 0.7, 0.9), 1.5)
 		var label = "%d/%d" % [tc.get("numerator", 4), tc.get("denominator", 4)]
-		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y + 11), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(0.2, 0.9, 0.7, 0.9))
-	# Speed markers (magenta)
+		draw_set_transform(Vector2(ts_cx, y), -PI * 0.5, Vector2.ONE)
+		draw_string(font, Vector2(2, baseline_offset), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(0.2, 0.9, 0.7, 1.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# Speed markers (magenta) — rotated -90° in Speed band, left-aligned from marker line
+	var spd_cx = RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH + SPEED_BAND_WIDTH * 0.5
 	for i in range(speed_changes.size()):
 		var sc = speed_changes[i]
 		var y = time_to_y(sc["time"])
 		if y < TRACK_HEADER_HEIGHT - 10 or y > h + 10:
 			continue
-		draw_line(Vector2(RULER_WIDTH, y + 6), Vector2(RULER_WIDTH + BPM_BAND_WIDTH, y + 6), Color(1.0, 0.4, 0.9, 0.9), 1.5)
+		draw_line(Vector2(spd_x0, y), Vector2(spd_x1, y), Color(1.0, 0.4, 0.9, 0.9), 1.5)
 		var label = "x%.1f" % sc.get("speed", 1.0)
-		draw_string(ThemeDB.fallback_font, Vector2(RULER_WIDTH + 1, y + 19), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 7, Color(1.0, 0.4, 0.9, 0.9))
+		draw_set_transform(Vector2(spd_cx, y), -PI * 0.5, Vector2.ONE)
+		draw_string(font, Vector2(2, baseline_offset), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color(1.0, 0.4, 0.9, 1.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_notes(start_time: float, end_time: float) -> void:
 	if chart_data == null or chart_data.notes.is_empty():
@@ -669,25 +708,30 @@ func _handle_right_click(pos: Vector2) -> void:
 		var t = _snap_time(y_to_time(pos.y))
 		ruler_right_clicked.emit(t)
 		return
-	# BPM/TimeSig/Speed band right-click: delete marker
-	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
-		var action_script = load("res://scripts/UndoRedoAction.gd")
-		# Check time sig marker first (teal markers drawn slightly lower)
-		var ts_idx = _time_sig_marker_at_y(pos.y)
-		if ts_idx > 0:
-			var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
-			var action = action_script.DeleteTimeSigChangeAction.new(ts_idx, ts_changes[ts_idx])
-			_request_action(action)
-			return
+	# BPM band right-click: delete BPM marker
+	if pos.x >= RULER_WIDTH and pos.x < RULER_WIDTH + BPM_BAND_WIDTH and pos.y >= TRACK_HEADER_HEIGHT:
 		var idx = _bpm_marker_at_y(pos.y)
 		if idx > 0:
 			var bpm_changes = chart_data.meta.get("bpm_changes", []) if chart_data else []
+			var action_script = load("res://scripts/UndoRedoAction.gd")
 			var action = action_script.DeleteBpmChangeAction.new(idx, bpm_changes[idx])
 			_request_action(action)
-			return
+		return
+	# Time sig band right-click: delete time sig marker
+	if pos.x >= RULER_WIDTH + BPM_BAND_WIDTH and pos.x < RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH and pos.y >= TRACK_HEADER_HEIGHT:
+		var ts_idx = _time_sig_marker_at_y(pos.y)
+		if ts_idx > 0:
+			var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
+			var action_script = load("res://scripts/UndoRedoAction.gd")
+			var action = action_script.DeleteTimeSigChangeAction.new(ts_idx, ts_changes[ts_idx])
+			_request_action(action)
+		return
+	# Speed band right-click: delete speed marker
+	if pos.x >= RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
 		var speed_idx = _speed_marker_at_y(pos.y)
 		if speed_idx > 0:
 			var speed_changes = chart_data.meta.get("speed_changes", []) if chart_data else []
+			var action_script = load("res://scripts/UndoRedoAction.gd")
 			var action = action_script.DeleteSpeedChangeAction.new(speed_idx, speed_changes[speed_idx])
 			_request_action(action)
 		return
@@ -773,8 +817,8 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 		ruler_clicked.emit(y_to_time(pos.y))
 		return
 
-	# BPM/TimeSig/Speed band click
-	if pos.x >= RULER_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
+	# BPM band click
+	if pos.x >= RULER_WIDTH and pos.x < RULER_WIDTH + BPM_BAND_WIDTH and pos.y >= TRACK_HEADER_HEIGHT:
 		var idx = _bpm_marker_at_y(pos.y)
 		if idx >= 0:
 			var bpm_changes = chart_data.meta.get("bpm_changes", []) if chart_data else []
@@ -783,16 +827,20 @@ func _handle_left_click(pos: Vector2, ctrl_held: bool) -> void:
 				_bpm_drag_active = true
 				_bpm_drag_index = idx
 				_bpm_drag_original_time = bpm_changes[idx]["time"]
-		else:
-			var ts_idx = _time_sig_marker_at_y(pos.y)
-			if ts_idx >= 0:
-				var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
-				time_sig_marker_clicked.emit(ts_changes[ts_idx], ts_idx)
-			else:
-				var speed_idx = _speed_marker_at_y(pos.y)
-				if speed_idx >= 0:
-					var speed_changes = chart_data.meta.get("speed_changes", []) if chart_data else []
-					speed_marker_clicked.emit(speed_changes[speed_idx], speed_idx)
+		return
+	# Time sig band click
+	if pos.x >= RULER_WIDTH + BPM_BAND_WIDTH and pos.x < RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH and pos.y >= TRACK_HEADER_HEIGHT:
+		var ts_idx = _time_sig_marker_at_y(pos.y)
+		if ts_idx >= 0:
+			var ts_changes = chart_data.meta.get("time_sig_changes", []) if chart_data else []
+			time_sig_marker_clicked.emit(ts_changes[ts_idx], ts_idx)
+		return
+	# Speed band click
+	if pos.x >= RULER_WIDTH + BPM_BAND_WIDTH + TIME_SIG_BAND_WIDTH and pos.x < CONTENT_OFFSET_X and pos.y >= TRACK_HEADER_HEIGHT:
+		var speed_idx = _speed_marker_at_y(pos.y)
+		if speed_idx >= 0:
+			var speed_changes = chart_data.meta.get("speed_changes", []) if chart_data else []
+			speed_marker_clicked.emit(speed_changes[speed_idx], speed_idx)
 		return
 
 	# Header click: ignored
