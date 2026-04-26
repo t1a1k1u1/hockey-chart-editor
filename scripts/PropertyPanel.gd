@@ -147,15 +147,6 @@ func _build_metadata_ui() -> void:
 	level_spin.value_changed.connect(_on_meta_numeric_changed.bind("level", true))
 	_build_row("Level:", level_spin)
 
-	# bpm
-	var bpm_spin = SpinBox.new()
-	bpm_spin.min_value = 1.0
-	bpm_spin.max_value = 9999.0
-	bpm_spin.step = 0.001
-	bpm_spin.value = meta.get("bpm", 120.0)
-	bpm_spin.value_changed.connect(_on_meta_numeric_changed.bind("bpm", false))
-	_build_row("BPM:", bpm_spin)
-
 	# offset
 	var offset_spin = SpinBox.new()
 	offset_spin.min_value = -10.0
@@ -170,6 +161,53 @@ func _build_metadata_ui() -> void:
 	audio_edit.text = meta.get("audio", "")
 	audio_edit.text_changed.connect(_on_meta_text_changed.bind("audio"))
 	_build_row("Audio:", audio_edit)
+
+	# --- 初期値 (bpm_changes[0] / time_sig_changes[0] / speed_changes[0]) ---
+	_build_section_label("初期値")
+
+	# BPM → bpm_changes[0].bpm
+	var bpm_changes = meta.get("bpm_changes", [{"time": 0.0, "bpm": 120.0}])
+	var bc0 = bpm_changes[0] if not bpm_changes.is_empty() else {"bpm": 120.0}
+	var bpm_spin = SpinBox.new()
+	bpm_spin.min_value = 1.0
+	bpm_spin.max_value = 9999.0
+	bpm_spin.step = 0.001
+	bpm_spin.value = bc0.get("bpm", 120.0)
+	bpm_spin.value_changed.connect(_on_bpm_change_field_changed.bind(0, "bpm"))
+	_build_row("BPM:", bpm_spin)
+
+	# 小節長 → time_sig_changes[0].numerator / denominator
+	var ts_changes = meta.get("time_sig_changes", [{"time": 0.0, "numerator": 4, "denominator": 4}])
+	var tc0 = ts_changes[0] if not ts_changes.is_empty() else {"numerator": 4, "denominator": 4}
+	var num_spin = SpinBox.new()
+	num_spin.min_value = 1
+	num_spin.max_value = 32
+	num_spin.step = 1
+	num_spin.value = tc0.get("numerator", 4)
+	num_spin.value_changed.connect(_on_ts_field_changed.bind(0, "numerator"))
+	_build_row("小節長 分子:", num_spin)
+	var den_opt = OptionButton.new()
+	den_opt.add_item("4", 0)
+	den_opt.add_item("8", 1)
+	den_opt.add_item("12", 2)
+	den_opt.add_item("16", 3)
+	var denoms = [4, 8, 12, 16]
+	var den_idx = denoms.find(tc0.get("denominator", 4))
+	if den_idx >= 0:
+		den_opt.selected = den_idx
+	den_opt.item_selected.connect(_on_ts_denom_selected.bind(0))
+	_build_row("小節長 分母:", den_opt)
+
+	# ノーツ速度 → speed_changes[0].speed
+	var speed_changes = meta.get("speed_changes", [{"time": 0.0, "speed": 1.0}])
+	var sc0 = speed_changes[0] if not speed_changes.is_empty() else {"speed": 1.0}
+	var speed_spin = SpinBox.new()
+	speed_spin.min_value = 0.1
+	speed_spin.max_value = 10.0
+	speed_spin.step = 0.1
+	speed_spin.value = sc0.get("speed", 1.0)
+	speed_spin.value_changed.connect(_on_speed_change_field_changed.bind(0, "speed"))
+	_build_row("ノーツ速度:", speed_spin)
 
 # -----------------------------------------------------------------------
 # BPM change section
