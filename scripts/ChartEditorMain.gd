@@ -71,6 +71,14 @@ var _upload_dialog: Window = null
 var _upload_status_label: Label = null
 var _uploader: Node = null
 
+# Supabase load
+var _load_dialog: Window = null
+var _load_status_label: Label = null
+var _load_song_list_vbox: VBoxContainer = null
+var _load_audio_check: CheckBox = null
+var _downloader: Node = null
+var _pending_load_song: Dictionary = {}
+
 func _ready() -> void:
 
 	chart_data = load("res://scripts/ChartData.gd").new()
@@ -626,6 +634,188 @@ func _on_upload_failed(error: String) -> void:
 
 #endregion
 
+#region Supabase Load
+
+func _on_supabase_load_pressed() -> void:
+	_show_supabase_load_dialog()
+
+func _show_supabase_load_dialog() -> void:
+	if _load_dialog != null and is_instance_valid(_load_dialog):
+		_load_dialog.popup_centered()
+		_start_supabase_fetch()
+		return
+
+	var vbox = VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vbox.add_theme_constant_override("separation", 6)
+
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(margin)
+
+	var inner = VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 6)
+	margin.add_child(inner)
+
+	_load_status_label = Label.new()
+	_load_status_label.text = "読み込み中..."
+	_load_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	inner.add_child(_load_status_label)
+
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size.y = 280
+	inner.add_child(scroll)
+
+	_load_song_list_vbox = VBoxContainer.new()
+	_load_song_list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_load_song_list_vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(_load_song_list_vbox)
+
+	_load_audio_check = CheckBox.new()
+	_load_audio_check.text = "音楽ファイルもダウンロードする"
+	_load_audio_check.button_pressed = true
+	inner.add_child(_load_audio_check)
+
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_END
+	var refresh_btn = Button.new()
+	refresh_btn.text = "更新"
+	refresh_btn.pressed.connect(_start_supabase_fetch)
+	btn_row.add_child(refresh_btn)
+	var close_btn = Button.new()
+	close_btn.text = "閉じる"
+	close_btn.pressed.connect(func(): if _load_dialog: _load_dialog.hide())
+	btn_row.add_child(close_btn)
+	inner.add_child(btn_row)
+
+	_load_dialog = Window.new()
+	_load_dialog.title = "Supabase から読み込む"
+	_load_dialog.size = Vector2i(560, 420)
+	_load_dialog.transient = true
+	_load_dialog.close_requested.connect(func(): if _load_dialog: _load_dialog.hide())
+	_load_dialog.add_child(vbox)
+	get_tree().root.add_child(_load_dialog)
+	_load_dialog.popup_centered()
+
+	_start_supabase_fetch()
+
+func _start_supabase_fetch() -> void:
+	if not _is_supabase_configured():
+		if _load_status_label:
+			_load_status_label.text = "Supabase が未設定です。\n先に「Supabase にアップロード」ダイアログで設定を保存してください。"
+		return
+	if _load_song_list_vbox:
+		for child in _load_song_list_vbox.get_children():
+			child.queue_free()
+	if _load_status_label:
+		_load_status_label.text = "読み込み中..."
+
+	if _downloader and is_instance_valid(_downloader):
+		_downloader.queue_free()
+		_downloader = null
+
+	_downloader = load("res://scripts/SupabaseDownloader.gd").new()
+	add_child(_downloader)
+	_downloader.song_list_loaded.connect(_on_downloader_song_list_loaded)
+	_downloader.fetch_failed.connect(_on_downloader_fetch_failed)
+	_downloader.audio_downloaded.connect(_on_downloader_audio_downloaded)
+	_downloader.fetch_song_list(
+		_supabase_config.get("url", ""),
+		_supabase_config.get("anon_key", ""),
+		_supabase_config.get("bucket", "songs")
+	)
+
+func _on_downloader_song_list_loaded(songs: Array) -> void:
+	if _load_status_label:
+		_load_status_label.text = "%d 曲見つかりました" % songs.size() if not songs.is_empty() else "曲が見つかりません"
+	if _load_song_list_vbox == null:
+		return
+	for child in _load_song_list_vbox.get_children():
+		child.queue_free()
+	for song_info in songs:
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+
+		var lbl = Label.new()
+		var title = song_info.get("title", song_info.get("song_id", ""))
+		var artist = song_info.get("artist", "")
+		var bpm = song_info.get("bpm", 0.0)
+		lbl.text = "[%s]  %s  BPM:%.0f" % [artist, title, bpm] if artist != "" else "%s  BPM:%.0f" % [title, bpm]
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.add_theme_font_size_override("font_size", 11)
+		row.add_child(lbl)
+
+		var open_btn = Button.new()
+		open_btn.text = "開く"
+		open_btn.custom_minimum_size.x = 60
+		open_btn.pressed.connect(_on_supabase_load_song.bind(song_info))
+		row.add_child(open_btn)
+
+		_load_song_list_vbox.add_child(row)
+
+func _on_downloader_fetch_failed(error: String) -> void:
+	if _load_status_label:
+		_load_status_label.text = "エラー: " + error
+
+func _on_supabase_load_song(song_info: Dictionary) -> void:
+	var chart_data_dict = song_info.get("chart_data", {})
+	if chart_data_dict.is_empty():
+		if _load_status_label:
+			_load_status_label.text = "chart.json が空または無効です"
+		return
+
+	var song_id: String = song_info.get("song_id", "")
+	var audio_filename: String = song_info.get("audio", "music.ogg")
+
+	# Save chart.json to local cache and load from there
+	var cache_dir = "user://editor_cache/" + song_id
+	DirAccess.make_dir_recursive_absolute(cache_dir)
+	var cache_path_str = cache_dir + "/" + "chart.json"
+	var f = FileAccess.open(cache_path_str, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(chart_data_dict, "\t"))
+		f.close()
+
+	if is_dirty:
+		_pending_action = "open"
+		_pending_load_song = {"cache_path": cache_path_str, "song_id": song_id, "audio": audio_filename}
+		_show_save_confirm()
+		return
+
+	_load_chart_from_cache(cache_path_str, song_id, audio_filename)
+
+func _load_chart_from_cache(cache_path_str: String, song_id: String, audio_filename: String) -> void:
+	_load_from_path(cache_path_str)
+	if _load_status_label:
+		_load_status_label.text = "読み込み完了: " + song_id
+	if _load_dialog:
+		_load_dialog.hide()
+
+	if _load_audio_check and _load_audio_check.button_pressed and _downloader and is_instance_valid(_downloader):
+		if _load_status_label:
+			_load_status_label.text = "音楽ファイルをダウンロード中..."
+		_pending_load_song = {"cache_path": cache_path_str, "song_id": song_id, "audio": audio_filename}
+		_downloader.download_audio(
+			_supabase_config.get("url", ""),
+			_supabase_config.get("anon_key", ""),
+			_supabase_config.get("bucket", "songs"),
+			song_id, audio_filename
+		)
+
+func _on_downloader_audio_downloaded(song_id: String, local_path: String) -> void:
+	if audio_player:
+		audio_player.load_audio_file(local_path)
+	if _load_status_label and is_instance_valid(_load_status_label):
+		_load_status_label.text = "音楽ファイル読み込み完了"
+	_pending_load_song = {}
+
+#endregion
+
 #region File Operations
 
 func _new_chart() -> void:
@@ -775,6 +965,7 @@ func _on_file_menu_id_pressed(id: int) -> void:
 		2: _do_save()
 		3: _do_save_as()
 		5: _on_upload_pressed()
+		6: _on_supabase_load_pressed()
 
 func _on_edit_menu_id_pressed(id: int) -> void:
 	match id:
@@ -860,7 +1051,15 @@ func _execute_pending_action() -> void:
 	_pending_action = ""
 	match action:
 		"new": _new_chart()
-		"open": _open_file_dialog()
+		"open":
+			if not _pending_load_song.is_empty():
+				var cache_path_str = _pending_load_song.get("cache_path", "")
+				var song_id = _pending_load_song.get("song_id", "")
+				var audio_fn = _pending_load_song.get("audio", "")
+				_pending_load_song = {}
+				_load_chart_from_cache(cache_path_str, song_id, audio_fn)
+			else:
+				_open_file_dialog()
 		"quit": get_tree().quit()
 
 func _on_window_close_requested() -> void:
