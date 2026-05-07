@@ -186,17 +186,13 @@ func _build_metadata_ui() -> void:
 	num_spin.value = tc0.get("numerator", 4)
 	num_spin.value_changed.connect(_on_ts_field_changed.bind(0, "numerator"))
 	_build_row("小節長 分子:", num_spin)
-	var den_opt = OptionButton.new()
-	den_opt.add_item("4", 0)
-	den_opt.add_item("8", 1)
-	den_opt.add_item("12", 2)
-	den_opt.add_item("16", 3)
-	var denoms = [4, 8, 12, 16]
-	var den_idx = denoms.find(tc0.get("denominator", 4))
-	if den_idx >= 0:
-		den_opt.selected = den_idx
-	den_opt.item_selected.connect(_on_ts_denom_selected.bind(0))
-	_build_row("小節長 分母:", den_opt)
+	var den_spin = SpinBox.new()
+	den_spin.min_value = 1
+	den_spin.max_value = 64
+	den_spin.step = 1
+	den_spin.value = tc0.get("denominator", 4)
+	den_spin.value_changed.connect(_on_ts_field_changed.bind(0, "denominator"))
+	_build_row("小節長 分母:", den_spin)
 
 	# ノーツ速度 → speed_changes[0].speed
 	var speed_changes = meta.get("speed_changes", [{"time": 0.0, "speed": 1.0}])
@@ -280,17 +276,13 @@ func _build_time_sig_change_ui() -> void:
 	num_spin.value_changed.connect(_on_ts_field_changed.bind(_selected_time_sig_change_index, "numerator"))
 	_build_row("分子:", num_spin)
 
-	var den_opt = OptionButton.new()
-	den_opt.add_item("4", 0)
-	den_opt.add_item("8", 1)
-	den_opt.add_item("12", 2)
-	den_opt.add_item("16", 3)
-	var denoms = [4, 8, 12, 16]
-	var den_idx = denoms.find(tc.get("denominator", 4))
-	if den_idx >= 0:
-		den_opt.selected = den_idx
-	den_opt.item_selected.connect(_on_ts_denom_selected.bind(_selected_time_sig_change_index))
-	_build_row("分母:", den_opt)
+	var den_spin = SpinBox.new()
+	den_spin.min_value = 1
+	den_spin.max_value = 64
+	den_spin.step = 1
+	den_spin.value = tc.get("denominator", 4)
+	den_spin.value_changed.connect(_on_ts_field_changed.bind(_selected_time_sig_change_index, "denominator"))
+	_build_row("分母:", den_spin)
 
 	if _selected_time_sig_change_index > 0:
 		var hint = Label.new()

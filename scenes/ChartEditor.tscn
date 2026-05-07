@@ -1,9 +1,9 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://ciexmvkhwh4v2"]
 
-[ext_resource type="Script" path="res://scripts/ChartEditorMain.gd" id="1_2vooy"]
-[ext_resource type="Script" path="res://scripts/Timeline.gd" id="2_0874k"]
-[ext_resource type="Script" path="res://scripts/PropertyPanel.gd" id="3_2pvn5"]
-[ext_resource type="Script" path="res://scripts/AudioPlayer.gd" id="4_s83rv"]
+[ext_resource type="Script" uid="uid://r5xwkl560kbt" path="res://scripts/ChartEditorMain.gd" id="1_2vooy"]
+[ext_resource type="Script" uid="uid://b6dg5ghuwt5il" path="res://scripts/Timeline.gd" id="2_0874k"]
+[ext_resource type="Script" uid="uid://baiksiu1ajjhp" path="res://scripts/PropertyPanel.gd" id="3_2pvn5"]
+[ext_resource type="Script" uid="uid://b507c0svovtec" path="res://scripts/AudioPlayer.gd" id="4_s83rv"]
 
 [node name="ChartEditor" type="Node" unique_id=2105775261]
 script = ExtResource("1_2vooy")
