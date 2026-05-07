@@ -19,7 +19,13 @@ var _selected_speed_change: Dictionary = {}
 var _building: bool = false  # Guard against signal re-entrancy
 
 func _ready() -> void:
-	pass
+	mouse_filter = Control.MOUSE_FILTER_PASS
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var focused = get_viewport().gui_get_focus_owner()
+		if focused and is_ancestor_of(focused):
+			focused.release_focus()
 
 func set_chart_data(data) -> void:
 	_chart_data = data
