@@ -518,8 +518,9 @@ func _draw_long_preview() -> void:
 		var tmp = start_y
 		start_y = end_y
 		end_y = tmp
-	# Grid sec for note height
-	var grid_sec = _grid_interval_at(_long_drag_start_time)
+	# Grid sec for note height — use fixed snap=32 to match normal note rendering
+	var bpm_changes = chart_data.meta.get("bpm_changes", []) if chart_data else []
+	var grid_sec = bpm_grid.grid_interval(_long_drag_start_time, bpm_changes, 32)
 	var note_h = max(grid_sec * pixels_per_second, 8.0)
 	var nw = cw * 0.8
 	# Band (full width, faded)
